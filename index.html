@@ -7,68 +7,238 @@
 <style>
 :root{--bg:#0f0d14;--panel:#1a1622;--line:#2e2838;--text:#e6e0ee;--dim:#9a90a8;--mind:#5aa0ff;--ill:#c04de0;--gold:#e0b84d;--sus:#e05a4d;--ok:#5ad08a}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 Georgia,serif}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.4 Georgia,serif}
 h1,h2,h3{margin:.2em 0;font-weight:normal}
-button{font:inherit;background:#2a2336;color:var(--text);border:1px solid #4a3f5c;border-radius:6px;padding:6px 10px;cursor:pointer}
+h3{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin:0 0 6px}
+button{font:inherit;background:#2a2336;color:var(--text);border:1px solid #4a3f5c;border-radius:6px;padding:5px 9px;cursor:pointer}
 button:hover:not(:disabled){background:#3a3050}
 button:disabled{opacity:.4;cursor:default}
 button.primary{background:#4b2a63;border-color:#7a4aa0}
-#app{max-width:1200px;margin:0 auto;padding:16px}
-.top{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px}
-.bar{height:22px;background:#000;border-radius:5px;position:relative;overflow:hidden;margin:4px 0}
-.bar>div{position:absolute;top:0;bottom:0}
-.bar span{position:absolute;inset:0;text-align:center;font-size:13px;line-height:22px;text-shadow:0 0 3px #000}
-.stats{display:flex;gap:18px;flex-wrap:wrap;margin-top:8px}
-.stats b{font-weight:normal;color:var(--dim)}
-.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:12px}
-.inst h3{font-size:17px}
-.inst .perk{color:var(--dim);font-size:13px;min-height:36px}
-.tgt{display:flex;justify-content:space-between;align-items:center;gap:6px;border-top:1px solid var(--line);padding:6px 0;font-size:14px}
-.tgt.held{color:var(--ok)}
-.tgt small{color:var(--dim)}
-.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;align-items:center}
-#log{height:180px;overflow:auto;font-size:13px;margin-top:12px}
-#log p{margin:2px 0}
-.ill{color:var(--ill)}.bad{color:var(--sus)}.good{color:var(--ok)}.gold{color:var(--gold)}
+button.risk{border-color:#a0704a;color:#f0c9a0}
+button.danger{background:#6a2430;border-color:#c0505a}
+#app{max-width:1440px;margin:0 auto;padding:10px;display:grid;gap:10px;grid-template-columns:330px minmax(0,1fr) 320px;grid-template-areas:"hud hud hud" "left map side"}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px}
+#hud{grid-area:hud;display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+#hud .ttl{font-size:17px;letter-spacing:.06em}
+#hud b{font-weight:normal;color:var(--dim);font-size:12px;letter-spacing:.1em;text-transform:uppercase;margin-right:4px}
+#willwrap{flex:1;min-width:300px}
+.bar{height:22px;background:#000;border-radius:5px;position:relative;overflow:hidden}
+.bar>div{position:absolute;top:0;bottom:0;transition:all .4s}
+.bar span{position:absolute;inset:0;text-align:center;font-size:12px;line-height:22px;text-shadow:0 0 3px #000,0 0 3px #000;white-space:nowrap}
+.pip{display:inline-block;width:11px;height:11px;border-radius:50%;border:1px solid var(--mind);margin-right:3px;vertical-align:-1px}
+.pip.on{background:var(--mind);box-shadow:0 0 6px var(--mind)}
+#left{grid-area:left;display:flex;flex-direction:column;gap:10px}
+#mapcol{grid-area:map}
+#side{grid-area:side;display:flex;flex-direction:column;gap:10px;min-height:0}
+.scene svg{display:block;width:100%;border-radius:6px}
+.cap{font-size:13px;min-height:36px;margin-top:6px}
+.cap small{color:var(--dim);display:block}
+.mapbars{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px;font-size:12px;color:var(--dim)}
+#map{display:block;width:100%;border-radius:6px;background:#0c0a11}
+.tgt{display:flex;justify-content:space-between;align-items:center;gap:6px;border-top:1px solid var(--line);padding:6px 0}
+.tgt.held b{color:var(--ok)}
+.tgt b{font-weight:normal}
+.tgt small{color:var(--dim);display:block}
+.tgt .btns{display:flex;flex-direction:column;gap:3px;flex:none}
+.tgt button{font-size:12px;padding:3px 7px}
+.perk{color:var(--dim);font-size:13px;margin-bottom:6px}
+.acts{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.acts button{font-size:13px;text-align:left}
+.acts small{display:block;color:var(--dim);font-size:11px}
+#log{flex:1;min-height:120px;max-height:230px;overflow:auto;font-size:12.5px}
+#log p{margin:3px 0}
+.ill{color:var(--ill)}.bad{color:var(--sus)}.good{color:var(--ok)}.gold{color:var(--gold)}.dim{color:var(--dim)}
 .modal{position:fixed;inset:0;background:#000c;display:flex;align-items:center;justify-content:center;padding:16px;z-index:9}
-.modal .panel{max-width:620px;width:100%}
+.modal .panel{max-width:640px;width:100%;max-height:92vh;overflow:auto;font-size:15px}
 .hidden{display:none}
-@media(max-width:800px){.top,.grid{grid-template-columns:1fr}}
+@media(max-width:1050px){#app{grid-template-columns:1fr;grid-template-areas:"hud" "map" "side" "left"}}
+
+/* ---- scene animation ---- */
+.tent{transform-box:view-box;animation:sway 3.2s ease-in-out infinite alternate}
+.t1{transform-origin:150px 76px}.t2{transform-origin:157px 78px;animation-delay:-.8s}.t3{transform-origin:163px 78px;animation-delay:-1.7s}.t4{transform-origin:170px 76px;animation-delay:-2.4s}
+@keyframes sway{from{transform:rotate(-7deg)}to{transform:rotate(7deg)}}
+.a1 .tent{animation-duration:2s}.a2 .tent{animation-duration:1.1s}.a3 .tent{animation-duration:.5s}
+.breath{animation:breath 4s ease-in-out infinite alternate;transform-box:view-box;transform-origin:160px 204px}
+@keyframes breath{from{transform:scaleY(1)}to{transform:scaleY(1.02)}}
+.a3 #illg{animation:shake .25s linear infinite}
+@keyframes shake{0%{transform:translate(0,0)}25%{transform:translate(1.5px,-1px)}75%{transform:translate(-1.5px,1px)}}
+.eye{fill:#f2d0ff;filter:drop-shadow(0 0 3px #d070ff);opacity:.75}
+.a1 .eye{opacity:.9}.a2 .eye{opacity:1;filter:drop-shadow(0 0 6px #e080ff)}.a3 .eye{fill:#fff;filter:drop-shadow(0 0 9px #ff80ff)}
+.sated .eye{opacity:.2}.sated .tent{animation-duration:7s}
+.ward{fill:none;stroke:var(--mind);transition:all .5s}
+.crack{stroke:#e6a0ff;stroke-width:1.5;fill:none;opacity:0;transition:opacity .5s}
+.c1 .k1,.c2 .k1,.c2 .k2,.c3 .crack{opacity:.9}
+.pose{display:none}
+.p-idle #stand,.p-dominate #stand,.p-brace #stand,.p-borrow #stand,.p-feed #stand,.p-meditate #sit,.p-lielow #crouch{display:block}
+.arm{display:none}
+.p-idle .a-idle,.p-feed .a-head,.p-brace .a-head,.p-dominate .a-reach,.p-borrow .a-idle{display:block}
+#thread,#rings,#shut,#veins{display:none}
+.p-dominate #thread,.p-meditate #rings,.p-lielow #shut,.p-borrow #veins,.p-brace #veins{display:block}
+.p-lielow #flame,.p-lielow #glowc{display:none}
+#thread path{stroke-dasharray:6 5;animation:dash 1s linear infinite}
+@keyframes dash{to{stroke-dashoffset:-22}}
+#flame{animation:flick .18s infinite alternate;transform-box:fill-box;transform-origin:50% 100%}
+@keyframes flick{from{transform:scale(1,1)}to{transform:scale(.9,1.12)}}
+#rings ellipse{fill:none;stroke:var(--mind);animation:rise 2.4s linear infinite}
+#rings ellipse:nth-child(2){animation-delay:-.8s}#rings ellipse:nth-child(3){animation-delay:-1.6s}
+@keyframes rise{from{transform:translateY(0);opacity:.9}to{transform:translateY(-70px);opacity:0}}
+.wglow{fill:#8fd0ff;opacity:0}.p-dominate .wglow,.p-meditate .wglow{opacity:1}.p-borrow .wglow,.p-brace .wglow{opacity:1;fill:#e080ff}
+/* map */
+.dist{cursor:pointer}
+.dist:hover .halo{opacity:.35}
+.halo{fill:#fff;opacity:0;transition:opacity .2s}
+.sel .halo{opacity:.18;stroke:#fff;stroke-width:1.5}
+.lbl{font:11px Georgia,serif;fill:#cfc6dc;text-anchor:middle;paint-order:stroke;stroke:#0c0a11;stroke-width:3px}
+.tok{stroke-width:1.5}
+.tok.locked{fill:#15121b;stroke:#4a4258}
+.tok.open{fill:#15121b;stroke:#cfc6dc}
+.tok.held{fill:url(#tokg);stroke:#f0c8ff;filter:drop-shadow(0 0 4px #c04de0)}
+.opp{fill:none;stroke:var(--gold);stroke-width:2;stroke-dasharray:3 3;animation:dash 1.2s linear infinite}
+.thr{fill:none;stroke:url(#thrg);stroke-dasharray:2 6;stroke-linecap:round;animation:dash 1.4s linear infinite;opacity:.8}
+.inq{animation:pulse 1s ease-in-out infinite alternate}
+@keyframes pulse{from{opacity:.65}to{opacity:1}}
 </style>
 </head>
 <body>
 <div id="app">
-  <div class="top">
-    <div class="panel">
-      <h2>Your Mind</h2>
-      <div class="bar" title="Blue: mind held free. Grey: mind spent holding thralls."><div id="mUsed" style="background:#555"></div><div id="mFree" style="background:var(--mind)"></div><span id="mTxt"></span></div>
-      <div class="stats">
-        <div><b>Turn</b> <span id="turn"></span></div>
-        <div><b>Actions</b> <span id="ap"></span></div>
-        <div><b>Gold</b> <span id="gold" class="gold"></span></div>
-      </div>
-      <div style="margin-top:6px">Suspicion of the High Magister</div>
-      <div class="bar"><div id="sBar" style="background:var(--sus)"></div><span id="sTxt"></span></div>
-      <div style="margin-top:6px">Subversion of Caldreth</div>
-      <div class="bar"><div id="vBar" style="background:var(--ok)"></div><span id="vTxt"></span></div>
+  <div id="hud" class="panel">
+    <div class="ttl">Dangerous Servant <span class="ill">/</span> Cruel Master</div>
+    <div><b>Night</b><span id="turn"></span></div>
+    <div><b>Gold</b><span id="gold" class="gold"></span></div>
+    <div><b>Actions</b><span id="ap"></span></div>
+    <div id="willwrap">
+      <div class="bar" title="Your whole mind. Grey is spent holding thralls. Purple is what the Illithid will push with tonight. Blue is what is left to absorb a surge.">
+        <div id="mUsed" style="background:#5a5564;left:0"></div><div id="mIll" style="background:var(--ill)"></div><div id="mFree" style="background:var(--mind)"></div></div>
+      <div id="mTxt" style="font-size:12px;margin-top:3px;color:var(--dim)"></div>
     </div>
-    <div class="panel">
-      <h2 class="ill">The Illithid</h2>
-      <div class="bar" title="The Illithid's steady push against your free mind"><div id="iBar" style="background:var(--ill)"></div><span id="iTxt"></span></div>
-      <div id="iOmen" class="ill" style="min-height:44px"></div>
-      <div id="iIntel" style="color:var(--dim);font-size:13px"></div>
-      <div class="actions">
-        <button onclick="act('meditate')">Meditate (+mind)</button>
-        <button onclick="act('lielow')">Lie low (−suspicion)</button>
-        <button onclick="act('feed')">Let it feed…</button>
-        <button id="confront" class="primary" onclick="act('confront')">Confront the High Magister</button>
-        <button class="primary" onclick="endTurn()">End turn ▸</button>
-      </div>
+    <button id="endbtn" class="primary" onclick="endTurn()">End night ▸</button>
+  </div>
+
+  <div id="left">
+    <div class="panel scene">
+      <h3 class="ill">The cell below</h3>
+      <svg id="cell" viewBox="0 0 320 230">
+        <defs>
+          <pattern id="brick" width="40" height="20" patternUnits="userSpaceOnUse"><rect width="40" height="20" fill="#18141f"/><path d="M0 .5H40M0 10.5H40M20 0V10M0 10V20" stroke="#0c0a10" stroke-width="1.5"/></pattern>
+          <radialGradient id="aurag"><stop offset="0" stop-color="#c04de0" stop-opacity=".6"/><stop offset="1" stop-color="#c04de0" stop-opacity="0"/></radialGradient>
+          <linearGradient id="barg" x1="0" x2="1"><stop offset="0" stop-color="#07060a"/><stop offset=".5" stop-color="#3a3542"/><stop offset="1" stop-color="#07060a"/></linearGradient>
+        </defs>
+        <rect width="320" height="230" fill="url(#brick)"/>
+        <path d="M62 230V92a98 86 0 0 1 196 0V230Z" fill="#09070c"/>
+        <path d="M0 196H320V230H0Z" fill="#120f17"/>
+        <ellipse class="ward" id="ward1" cx="160" cy="206" rx="118" ry="19" stroke-width="2.5"/>
+        <ellipse class="ward" id="ward2" cx="160" cy="206" rx="100" ry="15" stroke-width="1" stroke-dasharray="3 7"/>
+        <path class="crack k1" d="M70 200l12 6-7 8M236 196l10 9 14-2"/>
+        <path class="crack k2" d="M118 220l10-9 9 4M196 221l-6-10 12-5M52 208l14 2"/>
+        <path class="crack k3" d="M150 224l8-10 10 7 6-9M92 196l8 12-10 8M270 208l-13 6 5 9"/>
+        <circle id="aura" cx="160" cy="100" r="80" fill="url(#aurag)"/>
+        <g fill="none" stroke="#4d4756" stroke-width="3" stroke-dasharray="5 3">
+          <path d="M26 56Q70 140 121 152"/><path d="M294 56Q250 140 199 152"/></g>
+        <circle cx="26" cy="54" r="5" fill="none" stroke="#6a6472" stroke-width="3"/><circle cx="294" cy="54" r="5" fill="none" stroke="#6a6472" stroke-width="3"/>
+        <g id="illg"><g class="breath">
+          <path d="M160 74C130 78 114 110 106 206H214C206 110 190 78 160 74Z" fill="#1f1629" stroke="#3b2a4d" stroke-width="1.5"/>
+          <path d="M160 84V206M141 104Q136 150 131 206M179 104Q184 150 189 206" stroke="#2e2140" fill="none"/>
+          <path d="M134 98Q110 124 121 150M186 98Q210 124 199 150" stroke="#281c35" stroke-width="13" fill="none" stroke-linecap="round"/>
+          <path d="M116 147h10M194 147h10" stroke="#6a6472" stroke-width="5"/>
+          <path d="M121 152l-7 17M121 152l-1 20M121 152l5 18M199 152l7 17M199 152l1 20M199 152l-5 18" stroke="#8a66a2" stroke-width="2.4" stroke-linecap="round"/>
+          <path d="M160 16C132 16 122 40 129 58C133 69 142 78 150 81H170C178 78 187 69 191 58C198 40 188 16 160 16Z" fill="#6d4c82" stroke="#8a66a2"/>
+          <path d="M144 25Q160 34 176 25M136 39Q160 49 184 39M160 16V30" stroke="#523863" fill="none"/>
+          <path class="eye" d="M138 55l15 5-14 3Z"/><path class="eye" d="M182 55l-15 5 14 3Z"/>
+          <g fill="none" stroke="#7d5a94" stroke-width="5" stroke-linecap="round">
+            <g class="tent t1"><path d="M150 76C145 92 152 104 143 120"/></g>
+            <g class="tent t2"><path d="M157 78C154 98 160 112 155 130"/></g>
+            <g class="tent t3"><path d="M163 78C166 98 160 112 165 130"/></g>
+            <g class="tent t4"><path d="M170 76C175 92 168 104 177 120"/></g>
+          </g>
+        </g></g>
+        <g stroke="url(#barg)" stroke-width="8"><path d="M20 0V230M76 0V230M132 0V230M188 0V230M244 0V230M300 0V230" stroke="#0a080d"/></g>
+        <g stroke="#2d2836" stroke-width="1.5"><path d="M18 0V230M74 0V230M130 0V230M186 0V230M242 0V230M298 0V230"/></g>
+        <path d="M0 8H320" stroke="#0a080d" stroke-width="9"/><path d="M0 5H320" stroke="#2d2836" stroke-width="1.5"/>
+      </svg>
+      <div class="cap"><span id="iOmen" class="ill"></span><small id="iRest"></small><small id="iIntel"></small></div>
+    </div>
+    <div class="panel scene">
+      <h3 style="color:var(--mind)">Your garret</h3>
+      <svg id="sanct" viewBox="0 0 320 200">
+        <defs>
+          <linearGradient id="thg" x1="0" x2="1"><stop offset="0" stop-color="#5aa0ff"/><stop offset="1" stop-color="#c04de0"/></linearGradient>
+          <radialGradient id="cg"><stop offset="0" stop-color="#ffb347" stop-opacity=".45"/><stop offset="1" stop-color="#ffb347" stop-opacity="0"/></radialGradient>
+          <linearGradient id="trapg" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#c04de0" stop-opacity=".7"/><stop offset="1" stop-color="#c04de0" stop-opacity="0"/></linearGradient>
+        </defs>
+        <rect width="320" height="200" fill="#16121b"/>
+        <path d="M0 60L120 0H0ZM320 60L200 0H320Z" fill="#0e0b12"/>
+        <path d="M0 62L124 0M320 62L196 0M60 0V32M260 0V32" stroke="#2a2230" stroke-width="5"/>
+        <path d="M0 170H320V200H0Z" fill="#231a1c"/><path d="M0 170H320M40 170V200M110 170V200M250 170V200M300 170V200M0 185H320" stroke="#140e10"/>
+        <!-- window -->
+        <rect x="226" y="56" width="62" height="70" fill="#101a33"/>
+        <circle cx="272" cy="72" r="8" fill="#e8e6d0"/>
+        <path d="M226 126v-16h8v-8h6v8h8v-22l4-10 4 10v22h10v-12h8v12h14v16Z" fill="#070910"/>
+        <rect x="226" y="56" width="62" height="70" fill="none" stroke="#3a2c2e" stroke-width="4"/><path d="M257 56V126" stroke="#3a2c2e" stroke-width="2"/>
+        <g id="shut"><rect x="224" y="54" width="66" height="74" fill="#2a2022" stroke="#3a2c2e" stroke-width="2"/><path d="M257 54V128M228 70h26M228 90h26M228 110h26M260 70h26M260 90h26M260 110h26" stroke="#1a1315"/></g>
+        <!-- table, map, candle -->
+        <circle id="glowc" cx="62" cy="108" r="60" fill="url(#cg)"/>
+        <path d="M22 130H112V136H22ZM30 136V170M104 136V170" fill="#3a2c2e" stroke="#3a2c2e" stroke-width="4"/>
+        <path d="M70 128l34-3 2 4-34 3Z" fill="#b9a988"/>
+        <rect x="58" y="114" width="6" height="16" fill="#d8d0c0"/>
+        <path id="flame" d="M61 100c4 6 3 10 0 13c-3-3-4-7 0-13Z" fill="#ffc45a"/>
+        <path d="M300 60L290 170" stroke="#4a3a2a" stroke-width="3"/><circle cx="300" cy="58" r="5" fill="#5aa0ff" opacity=".7"/>
+        <!-- trapdoor -->
+        <rect x="140" y="176" width="70" height="18" fill="#120c0e" stroke="#3a2c2e" stroke-width="2"/>
+        <path id="trap" d="M140 176L130 120H220L210 176Z" fill="url(#trapg)"/>
+        <!-- wizard: standing -->
+        <g id="stand" class="pose">
+          <circle id="veins" cx="150" cy="120" r="46" fill="url(#aurag)"/>
+          <path d="M150 92C133 96 127 122 122 176H178C173 122 167 96 150 92Z" fill="#2b3550" stroke="#41507a"/>
+          <path d="M150 100V176M139 112Q135 146 133 176" stroke="#222a42" fill="none"/>
+          <path d="M150 64C136 64 131 78 133 92C139 100 161 100 167 92C169 78 164 64 150 64Z" fill="#222b45" stroke="#41507a"/>
+          <ellipse cx="150" cy="84" rx="8" ry="9" fill="#c9a98c"/><path d="M142 80Q150 74 158 80V76Q150 70 142 76Z" fill="#141a2c"/>
+          <circle class="wglow" cx="146.5" cy="84" r="1.6"/><circle class="wglow" cx="153.5" cy="84" r="1.6"/>
+          <g class="arm a-idle"><path d="M136 104Q118 116 108 128M164 104Q172 124 168 142" stroke="#2b3550" stroke-width="9" fill="none" stroke-linecap="round"/><circle cx="107" cy="128" r="3.5" fill="#c9a98c"/></g>
+          <g class="arm a-reach"><path d="M136 104Q130 124 134 142M164 102Q184 96 202 86" stroke="#2b3550" stroke-width="9" fill="none" stroke-linecap="round"/><circle cx="204" cy="85" r="3.5" fill="#c9a98c"/></g>
+          <g class="arm a-head"><path d="M136 104Q124 92 138 78M164 104Q176 92 162 78" stroke="#2b3550" stroke-width="9" fill="none" stroke-linecap="round"/></g>
+        </g>
+        <g id="thread"><path d="M206 84Q236 70 262 86T330 70" fill="none" stroke="url(#thg)" stroke-width="2.5"/><circle cx="206" cy="84" r="5" fill="#8fd0ff" opacity=".8"/></g>
+        <!-- wizard: seated -->
+        <g id="sit" class="pose">
+          <g id="rings"><ellipse cx="175" cy="150" rx="40" ry="8"/><ellipse cx="175" cy="150" rx="40" ry="8"/><ellipse cx="175" cy="150" rx="40" ry="8"/></g>
+          <path d="M175 110C160 114 152 140 138 168Q175 180 212 168C198 140 190 114 175 110Z" fill="#2b3550" stroke="#41507a"/>
+          <path d="M175 84C162 84 157 97 159 110C165 118 185 118 191 110C193 97 188 84 175 84Z" fill="#222b45" stroke="#41507a"/>
+          <ellipse cx="175" cy="103" rx="8" ry="9" fill="#c9a98c"/><path d="M167 99Q175 93 183 99V95Q175 89 167 95Z" fill="#141a2c"/>
+          <circle class="wglow" cx="171.5" cy="103" r="1.6"/><circle class="wglow" cx="178.5" cy="103" r="1.6"/>
+          <circle cx="150" cy="160" r="3.5" fill="#c9a98c"/><circle cx="200" cy="160" r="3.5" fill="#c9a98c"/>
+        </g>
+        <!-- wizard: crouched in the dark -->
+        <g id="crouch" class="pose">
+          <path d="M258 128C240 130 232 150 228 172H288C284 150 276 130 258 128Z" fill="#1c2236" stroke="#2c3654"/>
+          <path d="M258 112C247 112 243 122 245 132C250 138 266 138 271 132C273 122 269 112 258 112Z" fill="#161c2e" stroke="#2c3654"/>
+          <circle cx="254.5" cy="127" r="1.2" fill="#cfd8ff"/><circle cx="261.5" cy="127" r="1.2" fill="#cfd8ff"/>
+        </g>
+      </svg>
+      <div class="cap" id="pcap"></div>
     </div>
   </div>
-  <div class="grid" id="grid"></div>
-  <div class="panel" id="log"></div>
+
+  <div id="mapcol" class="panel">
+    <div class="mapbars">
+      <div>The High Magister's suspicion<div class="bar"><div id="sBar" style="background:var(--sus)"></div><span id="sTxt"></span></div></div>
+      <div>Caldreth subverted<div class="bar"><div id="vBar" style="background:var(--ok)"></div><span id="vTxt"></span></div></div>
+    </div>
+    <svg id="map" viewBox="0 0 640 520"></svg>
+  </div>
+
+  <div id="side">
+    <div class="panel" id="detail"></div>
+    <div class="panel">
+      <h3>Your own actions</h3>
+      <div class="acts">
+        <button id="bMed" onclick="act('meditate')">Meditate<small id="medS"></small></button>
+        <button id="bLie" onclick="act('lielow')">Lie low<small>−10 suspicion</small></button>
+        <button id="bBor" class="risk" onclick="act('borrow')">Borrow its power<small>+1 action now, it gains +1 forever</small></button>
+        <button id="bFeed" class="risk" onclick="act('feed')">Let it feed…<small>Sacrifice a thrall to sate it</small></button>
+      </div>
+    </div>
+    <div class="panel" id="log"></div>
+  </div>
 </div>
 
 <div id="modal" class="modal hidden"><div class="panel" id="mbody"></div></div>
@@ -76,190 +246,374 @@ button.primary{background:#4b2a63;border-color:#7a4aa0}
 <script>
 // ---------- Data ----------
 const TIER = [
-  {upkeep:4, gold:10, sus:5},
-  {upkeep:7, gold:25, sus:9},
-  {upkeep:11,gold:50, sus:14},
+  {upkeep:4, gold:10, sus:5,  force:.60, r:6},
+  {upkeep:7, gold:25, sus:9,  force:.45, r:7.5},
+  {upkeep:11,gold:50, sus:14, force:.30, r:9},
 ];
+const MAXMIND=70;
 const INST = [
-  {id:'coin', name:'The Gilded Consortium', perk:'Merchant guild. Each thrall here earns +3 gold per tier, every turn.',
+  {id:'coin', x:330,y:285, name:'The Gilded Consortium', perk:'Merchant guild. Each thrall here earns +3 gold per rank, every night.',
    people:['Ledger-clerk Pell','Factor Imra Dole','Guildmaster Osk Varrin']},
-  {id:'watch',name:'The Ashen Watch', perk:'City guard. Each thrall here lowers suspicion by 1 per tier, every turn.',
+  {id:'watch',x:530,y:275, name:'The Ashen Watch', perk:'City guard. Each thrall here lowers suspicion by 1 per rank, every night.',
    people:['Sergeant Hale','Captain Bree Tamsin','Lord-Marshal Cade Orwen']},
-  {id:'temple',name:'Temple of the Still Flame', perk:'Clergy. Meditation grants +1 extra mind per tier held here.',
+  {id:'temple',x:112,y:280, name:'Temple of the Still Flame', perk:'Clergy. Meditation grants +1 extra mind per rank held here.',
    people:['Acolyte Senn','Confessor Mirelle','The Hierarch Aubric']},
-  {id:'court',name:'The Lantern Court', perk:'Noble houses. Holding the Lady Chancellor grants +1 action each turn.',
+  {id:'court',x:185,y:140, name:'The Lantern Court', perk:'Noble houses. Holding the Lady Chancellor grants +1 action every night.',
    people:['Page Willem','Baron Tesk Ardane','Lady Chancellor Ysolde Crane']},
-  {id:'under',name:'The Undercroft', perk:'Thieves & spies. Tier 1: spike odds. Tier 2: next push range. Tier 3: exact next push.',
+  {id:'under',x:210,y:432, name:'The Undercroft', perk:'Thieves and spies who watch the cell for you. Rank 1: surge odds. Rank 2: whether a surge comes tonight. Rank 3: its exact size.',
    people:['Cutpurse Nim','Fence Old Marrow','The Mother of Keys']},
-  {id:'coll', name:'Collegium of the Ninth Seal', perk:'The High Magister\'s own academy. Its wards weaken the Illithid by 1 per tier. Its head is needed to confront him. Double suspicion.',
+  {id:'coll', x:462,y:140, name:'Collegium of the Ninth Seal', perk:'The High Magister\'s own academy. Its wards weaken the Illithid by 1 per rank. You need its Provost to confront him. Double suspicion.',
    people:['Apprentice Lio','Warden-Magus Fenna','Provost Dravik Sol']},
 ];
+const SPIRE={x:322,y:92}, GARRET={x:440,y:448};
+const OPPS=['is deep in their cups tonight','walks home alone tonight','is sick with fever, their guard down','is grieving, and not sleeping','has been dabbling in a forbidden tract'];
+const POSE={
+  idle:'You stand over your map of the city, deciding.',
+  meditate:'You sit in stillness, rebuilding the walls of your mind.',
+  dominate:'You reach out through the Illithid, across the rooftops, into another mind.',
+  lielow:'Candle out, shutters closed. You are nobody tonight.',
+  feed:'You look away while it feeds. You can still hear it.',
+  borrow:'Its strength runs through you like cold water. It felt you take it.',
+  brace:'You clutch your skull as the thing below throws itself at your will.'};
 
 // ---------- State ----------
 let S;
 function newGame(){
   S = {turn:1, ap:2, gold:30, mind:40, sus:0, sub:0,
-       ill:{base:14, spikeChance:.10, fed:0, fedTurns:0, next:null},
-       held:{}, over:false, log:[]};
+       ill:{base:12, spikeChance:.10, fedTurns:0, next:null},
+       held:{}, chan:false, borrowed:false, cloak:false, pose:'idle', sel:0,
+       inq:{at:-1, next:-1, eta:4}, opp:null, pending:null, over:false, log:[]};
   rollNext();
-  log('You hold the Illithid by a thread of will. In Caldreth, the High Magister Veyl Sarrow sits at the king\'s right hand, unaware.', 'ill');
+  log('You hold the Illithid by a thread of will. Above the city, the High Magister Veyl Sarrow sits at the king\'s right hand, unaware.', 'ill');
   render();
 }
+const R=()=>Math.random();
 const key=(i,t)=>INST[i].id+t;
 const thralls=()=>Object.keys(S.held).filter(k=>S.held[k]);
 const tierOf=k=>+k.slice(-1);
 const instOf=k=>INST.findIndex(x=>k.startsWith(x.id)&&k.length===x.id.length+1);
+const nameOf=k=>INST[instOf(k)].people[tierOf(k)];
 const used=()=>thralls().reduce((a,k)=>a+TIER[tierOf(k)].upkeep,0);
 const free=()=>S.mind-used();
 const tiersIn=id=>thralls().filter(k=>INST[instOf(k)].id===id).reduce((a,k)=>a+tierOf(k)+1,0);
 const has=(id,t)=>!!S.held[id+t];
 const maxAP=()=>2+(has('court',2)?1:0);
-const basePush=()=>Math.max(5,S.ill.base-tiersIn('coll')-(S.ill.fedTurns>0?8:0));
+const pushOf=base=>Math.max(5,base-tiersIn('coll')-(S.ill.fedTurns>0?8:0));
+// Growth the Illithid gets at nightfall: +1 if you left it idle, +1 every second night (every night from night 20).
+const growth=()=>(S.chan?0:1)+((S.turn+1)%2===0||S.turn>=20?1:0);
+const tonight=()=>pushOf(S.ill.base+growth());
+const margin=()=>free()-tonight();
+const isOpp=k=>S.opp&&S.opp.k===k;
+const goldCost=(i,t)=>isOpp(key(i,t))?Math.ceil(TIER[t].gold/2):TIER[t].gold;
+const forceChance=(i,t)=>Math.min(.95,TIER[t].force+(t>0&&S.held[key(i,t-1)]?.1:0)+(isOpp(key(i,t))?.3:0));
 
-// Pre-roll next turn's push so the Undercroft can reveal it.
 function rollNext(){
-  const spike = Math.random()<S.ill.spikeChance;
-  const amt = spike ? 10+Math.floor(Math.random()*16) : 0;
-  S.ill.next={spike, amt};
+  const spike = R()<S.ill.spikeChance;
+  S.ill.next={spike, amt: spike ? 8+Math.floor(R()*15) : 0};
 }
-function log(m,c=''){S.log.unshift(`<p class="${c}">[T${S.turn}] ${m}</p>`);S.log=S.log.slice(0,80);}
+function log(m,c=''){S.log.unshift(`<p class="${c}"><span class="dim">Night ${S.turn}.</span> ${m}</p>`);S.log=S.log.slice(0,80);}
 
 // ---------- Actions ----------
 function act(a){
   if(S.over) return;
-  if(a==='confront') return confront();
   if(a==='feed') return feedMenu();
+  if(a==='borrow'){
+    if(S.borrowed) return;
+    S.borrowed=true;S.ap++;S.ill.base++;S.pose='borrow';
+    log('You drink from the Illithid\'s strength. One more action tonight. It is stronger for the exchange, forever. (Illithid +1 power)','ill');
+    return render();
+  }
   if(S.ap<1) return;
-  if(a==='meditate'){const g=Math.min(3+tiersIn('temple'),70-S.mind);if(g<=0){log('Your mind is as strong as it can be (70).');return render();}S.mind+=g;log(`You meditate in the dark. Mind strength +${g}.`,'good');}
-  if(a==='lielow'){S.sus=Math.max(0,S.sus-12);log('You keep your head down. Suspicion −12.');}
+  if(a==='meditate'){const g=Math.min(3+tiersIn('temple'),MAXMIND-S.mind);if(g<=0) return;S.mind+=g;S.pose='meditate';log(`You meditate. Mind strength +${g}.`,'good');}
+  if(a==='lielow'){S.sus=Math.max(0,S.sus-10);S.pose='lielow';log('You keep your head down. Suspicion −10.');}
   S.ap--;render();
 }
-function dominate(i,t){
-  const T=TIER[t],k=key(i,t),p=INST[i].people[t];
-  if(S.ap<1||S.gold<T.gold||free()<T.upkeep) return;
-  if(t>0&&!S.held[key(i,t-1)]) return;
-  S.gold-=T.gold;S.ap--;S.held[k]=true;
-  const sus=T.sus*(INST[i].id==='coll'?2:1);S.sus+=sus;
-  log(`Through the Illithid you slip into ${p}'s mind. They are yours. (−${T.upkeep} free mind, +${sus} suspicion)`,'good');
+function take(i,t,forced){
+  const T=TIER[t],k=key(i,t),p=INST[i].people[t],opp=isOpp(k),mult=INST[i].id==='coll'?2:1;
+  if(S.over||S.ap<1||S.held[k]||free()<T.upkeep||S.inq.at===i) return;
+  if(!forced){
+    if(S.gold<goldCost(i,t)||!(t===0||S.held[key(i,t-1)]||opp)) return;
+    S.gold-=goldCost(i,t);
+  }
+  S.ap--;S.chan=true;S.pose='dominate';S.sel=i;
+  if(forced&&R()>forceChance(i,t)){
+    const sus=(T.sus+6)*mult;S.sus+=sus;S.ill.base++;S.pose='brace';
+    log(`You hurl yourself at ${p}'s mind unprepared and it slams shut. They felt you. The Illithid savours your failure. (+${sus} suspicion, Illithid +1 power)`,'bad');
+  } else {
+    S.held[k]=true;const sus=T.sus*mult,b=(t+1)*2;S.sus+=sus;S.sub=Math.min(100,S.sub+b);
+    if(opp)S.opp=null;
+    log(`${forced?'You break into':'Through the Illithid you slip into'} ${p}'s mind. They are yours. (−${T.upkeep} free mind, +${sus} suspicion, +${b} subversion)`,'good');
+  }
   render();checkSus();
 }
 function release(k,quiet){
   S.held[k]=false;
-  const p=INST[instOf(k)].people[tierOf(k)];
-  if(!quiet){S.sus+=2;log(`You release ${p}. They wake confused. (+2 suspicion)`);}
+  const p=nameOf(k);
+  if(!quiet){S.sus+=2;log(`You release ${p}. They wake confused. (+2 suspicion)`);render();checkSus();}
   return p;
 }
 function feedMenu(){
   if(S.ap<1) return;
   const list=thralls();
   if(!list.length){log('There is no mind to offer it.','bad');return render();}
-  modal(`<h2 class="ill">Let it feed</h2><p>Offer a thrall's mind to the Illithid. It will be sated (−8 push for 3 turns), but it grows stronger forever (+2 base push). The thrall is destroyed.</p>`+
-    list.map(k=>`<button style="margin:3px" onclick="feed('${k}')">${INST[instOf(k)].people[tierOf(k)]}</button>`).join('')+
+  modal(`<h2 class="ill">Let it feed</h2><p>Offer a thrall's mind to the Illithid. It will be sated (−8 push for 3 nights), but it grows stronger forever (+2 power). The thrall is destroyed and the body will be found (+6 suspicion).</p>`+
+    list.map(k=>`<button style="margin:3px" onclick="feed('${k}')">${nameOf(k)}</button>`).join('')+
     `<p><button onclick="closeModal()">Cancel</button></p>`);
 }
 function feed(k){
   closeModal();const p=release(k,true);
-  S.ill.fedTurns=3;S.ill.base+=2;S.sus+=6;S.ap--;
+  S.ill.fedTurns=3;S.ill.base+=2;S.sus+=6;S.ap--;S.pose='feed';
   log(`The Illithid devours ${p}'s mind. It is quiet, for now. (+6 suspicion)`,'ill');
   render();checkSus();
 }
+function cloak(){
+  if(S.over||S.ap<1||S.cloak||S.inq.at<0) return;
+  S.ap--;S.cloak=true;S.pose='lielow';
+  log(`You smooth your thralls' faces into their old habits. The Inquisitor will find nothing in ${INST[S.inq.at].name} tonight.`);
+  render();
+}
+function seize(){
+  if(S.over||S.ap<1||S.inq.at<0) return;
+  const i=S.inq.at;S.ap--;S.chan=true;S.pose='dominate';
+  if(R()<.5){
+    S.sus=Math.max(0,S.sus-15);S.inq={at:-1,next:-1,eta:7};
+    log('You catch the Inquisitor\'s mind mid-thought and turn it. He will report that Caldreth is clean. (−15 suspicion, he will not return for a while)','good');
+  } else {
+    S.sus+=15;S.pose='brace';
+    const here=thralls().filter(k=>instOf(k)===i);
+    let m='The Inquisitor\'s mind is warded. He staggers, and knows exactly what just touched him. (+15 suspicion)';
+    if(here.length){const k=here[Math.floor(R()*here.length)];m+=` He turns on ${release(k,true)} at once; you lose them.`;}
+    log(m,'bad');
+  }
+  render();checkSus();
+}
 function confront(){
-  if(!has('coll',2)||S.sub<100||S.ap<1) return;
-  const push=Math.round(basePush()*2.5);
-  modal(`<h2>The Confrontation</h2><p>You walk into the Magister's tower with the Collegium's Provost at your side and a kingdom already rotting under him. Veyl Sarrow recognises you, too late.</p>
+  if(!has('coll',2)||S.sub<100||S.ap<1||S.over) return;
+  const push=Math.round(tonight()*2);
+  modal(`<h2>The Confrontation</h2><p>You climb the Spire with the Collegium's Provost at your side and a kingdom already rotting under him. Veyl Sarrow recognises you, too late.</p>
   <p>To break his mind you must loose the Illithid's full power through yourself. In that instant it will strike back with <b class="ill">${push}</b> force. You have <b>${free()}</b> free mind.</p>
-  <p>Release thralls first if you need to. This is your only chance.</p>
+  <p>Release thralls first if you need to (but keep the Provost). This is your only chance.</p>
   <button class="primary" onclick="finalStrike(${push})">Strike</button> <button onclick="closeModal()">Not yet</button>`);
 }
 function finalStrike(push){
   closeModal();
-  if(free()>=push) end(true,'The Magister\'s mind breaks against yours. Your family is avenged, and Caldreth answers to you now. But the thing in your head is watching, and it is patient.');
+  if(free()>=push) end(true,'The Magister\'s mind breaks against yours. Your family is avenged, and Caldreth answers to you now. But the thing in the cell is watching, and it is patient.');
   else end(false,'At the moment of triumph your grip slips. The Illithid surges through the gap and takes you both. The Magister is dead; so are you, in every way that matters.');
 }
 
-// ---------- Turn ----------
+// ---------- Night ----------
 function endTurn(){
-  if(S.over) return;
-  // income & upkeep effects
-  let inc=2+thralls().filter(k=>k.startsWith('coin')).reduce((a,k)=>a+3*(tierOf(k)+1),0);
+  if(S.over||S.pending) return;
+  // thralls work
+  const inc=5+thralls().filter(k=>k.startsWith('coin')).reduce((a,k)=>a+3*(tierOf(k)+1),0);
   S.gold+=inc;
   const sub=thralls().reduce((a,k)=>a+tierOf(k)+1,0);
   S.sub=Math.min(100,S.sub+sub);
-  S.sus=Math.max(0,S.sus-2-tiersIn('watch')+thralls().filter(k=>tierOf(k)===2).length);
-  log(`Thralls work in the shadows: +${inc} gold, +${sub} subversion.`,'gold');
+  const heads=thralls().filter(k=>tierOf(k)===2).length;
+  S.sus=Math.max(0,S.sus+heads-tiersIn('watch'));
+  log(`Your thralls work in the shadows: +${inc} gold${sub?`, +${sub} subversion`:''}.`,'gold');
+  // the Inquisitor searches
+  if(S.inq.at>=0&&!S.cloak){
+    thralls().filter(k=>instOf(k)===S.inq.at).forEach(k=>{
+      if(R()<.35){S.sus+=10;log(`The Inquisitor looks into ${release(k,true)}'s eyes and sees someone else looking back. You lose them. (+10 suspicion)`,'bad');}});
+  }
   if(checkSus()) return;
-  // Illithid
+  // the Illithid
+  const idle=!S.chan;
+  S.ill.base+=growth();
   S.turn++;
-  if(S.turn%3===0) S.ill.base++;
-  const n=S.ill.next, push=basePush()+n.amt;
-  if(n.spike){S.ill.spikeChance=.10;log(`THE ILLITHID SPIKES! It pushes with ${push} force.`,'ill');}
-  else {S.ill.spikeChance=Math.min(.6,S.ill.spikeChance+.07);}
+  if(idle) log('You left the Illithid idle. Unused, it rests and gathers itself. (Illithid +1 power)','ill');
+  const n=S.ill.next, push=pushOf(S.ill.base)+n.amt;
+  if(n.spike){S.ill.spikeChance=.10;log(`THE ILLITHID SURGES! It throws ${push} force against your will.`,'ill');}
+  else S.ill.spikeChance=Math.min(.6,S.ill.spikeChance+.07);
   if(S.ill.fedTurns>0) S.ill.fedTurns--;
-  S.ap=maxAP();
+  S.ap=maxAP();S.chan=false;S.borrowed=false;S.cloak=false;S.pose=n.spike?'brace':'idle';
   rollNext();
+  moveInquisitor();
+  // openings
+  if(S.opp&&--S.opp.turns<=0) S.opp=null;
+  if(!S.opp&&R()<.3){
+    const c=[];INST.forEach((I,i)=>I.people.forEach((p,t)=>{if(!S.held[key(i,t)]&&S.inq.at!==i)c.push(key(i,t));}));
+    if(c.length){const k=c[Math.floor(R()*c.length)];S.opp={k,turns:2,why:OPPS[Math.floor(R()*OPPS.length)]};
+      log(`An opening: ${nameOf(k)} ${S.opp.why}. For two nights they can be taken at half cost, whatever their rank.`,'gold');}
+  }
   if(free()<push) return breakMenu(push);
-  if(!n.spike) log(`The Illithid presses with ${push} force. You hold (${free()} free).`);
+  if(!n.spike) log(`The Illithid presses with ${push} force. You hold.`);
   render();
 }
+function moveInquisitor(){
+  const q=S.inq;
+  if(q.at>=0){ if(--q.stay<=0){log(`The Inquisitor leaves ${INST[q.at].name}.`);q.at=-1;q.eta=S.sus>=50?3:5;} }
+  else if(q.next>=0){ q.at=q.next;q.next=-1;q.stay=2;log(`Inquisitor Maldane Roake is searching ${INST[q.at].name}. Each thrall there may be exposed at nightfall.`,'bad'); }
+  else if(--q.eta<=0){
+    const c=thralls().map(instOf);
+    q.next=c.length?c[Math.floor(R()*c.length)]:Math.floor(R()*INST.length);
+    log(`Word from the street: the Magister's Inquisitor will search ${INST[q.next].name} tomorrow night.`,'bad');
+  }
+}
 function breakMenu(push){
-  render();
+  S.pending={push};S.pose='brace';render();
   const list=thralls();
   if(S.mind<push) return end(false,`The Illithid hits with ${push} force. Even with every thrall let go, your mind cannot hold it. It wears you now.`);
   modal(`<h2 class="ill">Your grip is failing</h2><p>The Illithid pushes with <b>${push}</b> force. You have only <b>${free()}</b> free mind. Snap your hold on thralls to reclaim focus. Each snapped thrall wakes screaming (+5 suspicion).</p>`+
-    list.map(k=>`<button style="margin:3px" onclick="snap('${k}',${push})">Snap ${INST[instOf(k)].people[tierOf(k)]} (+${TIER[tierOf(k)].upkeep})</button>`).join('')+
-    `<p><button onclick="end(false,'You let go. The Illithid takes your body for its own. Dangerous servant, cruel master.')">Give in</button></p>`);
+    list.map(k=>`<button style="margin:3px" onclick="snap('${k}')">Snap ${nameOf(k)} (+${TIER[tierOf(k)].upkeep})</button>`).join('')+
+    `<p><button class="danger" onclick="end(false,'You let go. The Illithid takes your body for its own. Dangerous servant, cruel master.')">Give in</button></p>`);
 }
-function snap(k,push){
+function snap(k){
+  const push=S.pending.push;
   closeModal();const p=release(k,true);S.sus+=5;
   log(`You tear free of ${p} to brace yourself.`,'bad');
   if(free()<push) return breakMenu(push);
-  log(`You hold against the spike with ${free()} free mind.`,'good');
+  S.pending=null;
+  log(`You hold against it with ${free()} free mind.`,'good');
   render();checkSus();
 }
 function checkSus(){
-  if(S.sus>=100){end(false,'The High Magister has found you. His wards close around your hiding place and he takes the Illithid for himself.');return true;}
+  if(S.sus>=100&&!S.over){end(false,'The High Magister has found you. His wards close around your garret and he takes the Illithid for himself.');return true;}
   return false;
 }
 function end(win,msg){
-  S.over=true;render();
-  modal(`<h2 class="${win?'good':'bad'}">${win?'Vengeance':'Game over'}</h2><p>${msg}</p><p>Turns survived: ${S.turn}</p><button class="primary" onclick="closeModal();newGame()">Play again</button>`);
+  S.over=true;S.pending=null;render();
+  modal(`<h2 class="${win?'good':'bad'}">${win?'Vengeance':'Game over'}</h2><p>${msg}</p><p>Nights: ${S.turn} · Subversion: ${S.sub} · Thralls held: ${thralls().length}</p><button class="primary" onclick="closeModal();newGame()">Play again</button>`);
 }
 
-// ---------- UI ----------
+// ---------- Map ----------
 const $=id=>document.getElementById(id);
+const riverY=x=>372+18*Math.sin(x/90)+(x>450?(x-450)*.35:0);
+const ICON={
+  coin:'<path d="M-17 13V-3L0-16 17-3V13Z" fill="#7a6e8c" stroke="#a79bb8"/><circle cy="3" r="6" fill="#e0b84d"/><path d="M0 0V6M-2 2H2" stroke="#7a5a10"/>',
+  watch:'<path d="M-12 13V-14h5v5h4.5v-5h5v5h4.5v-5h5V13Z" fill="#7a6e8c" stroke="#a79bb8"/><path d="M-5-2H5V4Q5 9 0 11Q-5 9-5 4Z" fill="#b04a40"/>',
+  temple:'<path d="M-17 13V1A17 15 0 0 1 17 1V13Z" fill="#7a6e8c" stroke="#a79bb8"/><path d="M-9 13V4M0 13V4M9 13V4" stroke="#544a63"/><path d="M0-27c5 6 4 10 0 13c-4-3-5-7 0-13Z" fill="#ffb347"/>',
+  court:'<path d="M-22 13V-1h9v-9h26v9h9V13Z" fill="#7a6e8c" stroke="#a79bb8"/><path d="M-13-10L0-19 13-10Z" fill="#9a5a7a"/><circle cx="-16" cy="5" r="2.5" fill="#ffd98a"/><circle cx="16" cy="5" r="2.5" fill="#ffd98a"/><circle cy="1" r="2.5" fill="#ffd98a"/>',
+  under:'<path d="M-17 13V1A17 17 0 0 1 17 1V13Z" fill="#4a4258" stroke="#7a6e8c"/><path d="M-10 13V3A10 10 0 0 1 10 3V13Z" fill="#07060a"/><circle cy="1" r="3" fill="none" stroke="#e0b84d" stroke-width="1.5"/><path d="M0 4V11M0 8H3M0 11H3" stroke="#e0b84d" stroke-width="1.5"/>',
+  coll:'<path d="M-8 13V-15L0-26 8-15V13Z" fill="#7a6e8c" stroke="#a79bb8"/><path d="M-20 13V-2H-8V13ZM8 13V-2H20V13Z" fill="#6a5f7c" stroke="#a79bb8"/><circle cy="-8" r="3.5" fill="#7fd0ff"/>'};
+function buildMap(){
+  let s=1234567;const r=()=>(s=s*16807%2147483647)/2147483647;
+  const places=[...INST,SPIRE,GARRET];
+  let h=`<defs><radialGradient id="tokg"><stop offset="0" stop-color="#f0c8ff"/><stop offset="1" stop-color="#8a3ab0"/></radialGradient>
+    <linearGradient id="thrg" gradientUnits="userSpaceOnUse" x1="0" y1="520" x2="0" y2="0"><stop offset="0" stop-color="#5aa0ff"/><stop offset="1" stop-color="#c04de0"/></linearGradient>
+    <radialGradient id="spg"><stop offset="0" stop-color="#e05a4d" stop-opacity=".8"/><stop offset="1" stop-color="#e05a4d" stop-opacity="0"/></radialGradient></defs>`;
+  h+=`<ellipse cx="320" cy="265" rx="300" ry="240" fill="#1b1722"/>`;
+  h+=`<ellipse cx="322" cy="100" rx="90" ry="46" fill="#241f2c"/><ellipse cx="322" cy="96" rx="60" ry="30" fill="#2b2534"/>`;
+  for(let n=0;n<620;n++){
+    const x=30+r()*580,y=30+r()*470,w=7+r()*9,hh=6+r()*7,a=r()*30-15;
+    if(((x-320)/286)**2+((y-265)/226)**2>1||Math.abs(y+4-riverY(x))<19) continue;
+    if(places.some(p=>Math.abs(x+6-p.x)<40&&y>p.y-36&&y<p.y+62)) continue;
+    h+=`<rect x="${x|0}" y="${y|0}" width="${w|0}" height="${hh|0}" fill="${['#2d2637','#352c40','#29222f','#3d3346'][n%4]}" transform="rotate(${a|0} ${x|0} ${y|0})"/>`;
+  }
+  // streets carved through the houses
+  h+=`<g fill="none" stroke="#1b1722" stroke-width="6" stroke-linecap="round">`+
+    places.map(p=>`<path d="M${p.x} ${p.y+14}Q${(p.x+320)/2} ${p.y+20} 322 235"/>`).join('')+
+    `<ellipse cx="320" cy="262" rx="215" ry="160"/></g>`;
+  // river
+  let d='';for(let x=10;x<=640;x+=10)d+=(d?'L':'M')+x+' '+riverY(x).toFixed(1);
+  h+=`<path d="${d}" fill="none" stroke="#1b3350" stroke-width="20"/><path d="${d}" fill="none" stroke="#28507a" stroke-width="2" stroke-dasharray="14 18" opacity=".6"/>`;
+  [262,400,560].forEach(x=>h+=`<rect x="${x-5}" y="${riverY(x)-14}" width="10" height="28" fill="#6a5f78" stroke="#0c0a11"/>`);
+  // wall
+  h+=`<ellipse cx="320" cy="265" rx="300" ry="240" fill="none" stroke="#6a5f78" stroke-width="4"/>`;
+  for(let a=0;a<16;a++){const t=a/16*Math.PI*2+.2,x=320+300*Math.cos(t),y=265+240*Math.sin(t);h+=`<rect x="${x-6}" y="${y-6}" width="12" height="12" fill="#6a5f78" stroke="#0c0a11"/>`;}
+  h+=`<text x="26" y="30" style="font:15px Georgia,serif;letter-spacing:.3em" fill="#9a90a8">CALDRETH</text><text x="27" y="45" style="font:italic 10px Georgia,serif" fill="#6a6078">the king's city</text>`;
+  $('map').innerHTML=h+'<g id="mapdyn"></g>';
+}
+function drawMap(){
+  let h='';
+  // threads of control from the garret
+  INST.forEach((I,i)=>{const n=thralls().filter(k=>instOf(k)===i).length;if(!n)return;
+    const mx=(GARRET.x+I.x)/2+(I.y-GARRET.y)*.18,my=(GARRET.y+I.y)/2-(I.x-GARRET.x)*.18;
+    h+=`<path class="thr" stroke-width="${1.5+n}" d="M${GARRET.x} ${GARRET.y-8}Q${mx} ${my} ${I.x} ${I.y+30}"/>`;});
+  // the Spire
+  const sg=S.sus/100;
+  h+=`<g class="dist ${S.sel==='spire'?'sel':''}" onclick="sel('spire')" transform="translate(${SPIRE.x} ${SPIRE.y})"><title>The Spire: seat of High Magister Veyl Sarrow</title>
+    <circle class="halo" r="46"/><circle r="${30+sg*40}" cy="-36" fill="url(#spg)" opacity="${.25+sg*.75}"/>
+    <path d="M-30 22V2h22V22ZM8 22V2h22V22Z" fill="#6a5f7c" stroke="#a79bb8"/><path d="M-30 2v-5h5v5M-19 2v-5h5v5M14 2v-5h5v5M25 2v-5h5v5" fill="none" stroke="#a79bb8"/>
+    <path d="M-8 22V-30L0-52 8-30V22Z" fill="#8a7e9c" stroke="#c0b4d0"/><circle cy="-34" r="3.5" fill="#e05a4d"/>
+    <text class="lbl" y="36">The Spire</text></g>`;
+  // garret
+  h+=`<g transform="translate(${GARRET.x} ${GARRET.y})"><title>Your garret, and the cell beneath it</title><circle r="16" fill="#5aa0ff" opacity=".18"/>
+    <path d="M-10 9V-3L0-12 10-3V9Z" fill="#3a4668" stroke="#8fb4ff"/><rect x="-3" y="-2" width="6" height="6" fill="#8fd0ff"/><text class="lbl" y="24" style="fill:#8fb4ff">Your garret</text></g>`;
+  // institutions
+  INST.forEach((I,i)=>{
+    h+=`<g class="dist ${S.sel===i?'sel':''}" onclick="sel(${i})" transform="translate(${I.x} ${I.y})"><title>${I.name}</title><rect class="halo" x="-58" y="-34" width="116" height="92" rx="12"/>${ICON[I.id]}`;
+    I.people.forEach((p,t)=>{const k=key(i,t),held=S.held[k],open=t===0||S.held[key(i,t-1)]||isOpp(k);
+      const x=(t-1)*24;
+      h+=`<circle class="tok ${held?'held':open?'open':'locked'}" cx="${x}" cy="30" r="${TIER[t].r}"><title>${p}${held?' (your thrall)':''}</title></circle>`;
+      if(held)h+=`<path d="M${x-3} 28q3 5 6 0M${x-2} 31v3M${x+2} 31v3" stroke="#3a1050" fill="none"/>`;
+      if(isOpp(k))h+=`<circle class="opp" cx="${x}" cy="30" r="${TIER[t].r+4}"/>`;});
+    h+=`<text class="lbl" y="53">${I.name.replace(/^The /,'')}</text>`;
+    if(S.inq.next===i)h+=`<circle r="52" cy="12" fill="none" stroke="#e05a4d" stroke-width="1.5" stroke-dasharray="5 5" class="inq"/><text class="lbl" y="-32" style="fill:#e05a4d">Inquisitor coming</text>`;
+    if(S.inq.at===i)h+=`<g class="inq" transform="translate(40 -18)"><title>Inquisitor Maldane Roake</title><circle r="13" fill="#3a1216" stroke="#e05a4d" stroke-width="2"/><path d="M-7 0Q0-7 7 0Q0 7-7 0Z" fill="#f0c0b8"/><circle r="2.5" fill="#3a1216"/></g><text class="lbl" y="-32" style="fill:#e05a4d">${S.cloak?'Inquisitor (thralls cloaked)':'Inquisitor searching'}</text>`;
+    h+=`</g>`;});
+  $('mapdyn').innerHTML=h;
+}
+function sel(x){S.sel=x;render();}
+
+// ---------- UI ----------
 function modal(h){$('mbody').innerHTML=h;$('modal').classList.remove('hidden');}
 function closeModal(){$('modal').classList.add('hidden');}
 function pct(v,max){return Math.max(0,Math.min(100,v/max*100))+'%';}
-function render(){
-  const scale=Math.max(S.mind,60);
-  $('mUsed').style.cssText+=`;left:0;width:${pct(used(),scale)}`;
-  $('mFree').style.cssText+=`;left:${pct(used(),scale)};width:${pct(free(),scale)}`;
-  $('mTxt').textContent=`Mind ${S.mind}/70 · held ${used()} · free ${free()}`;
-  $('iBar').style.width=pct(basePush(),scale);
-  $('iTxt').textContent=`Steady push ${basePush()}${S.ill.fedTurns?` (sated ${S.ill.fedTurns})`:''}`;
-  const c=S.ill.spikeChance;
-  $('iOmen').textContent=c<.2?'It is quiet. Too quiet.':c<.35?'You feel it testing the edges of your will.':c<.5?'Whispers. It is gathering itself.':'It is coiled to strike. A surge is coming.';
-  const u=tiersIn('under'), n=S.ill.next, nb=basePush()+(S.turn%3===2?1:0);
-  $('iIntel').textContent=has('under',2)?`Undercroft intel: next push will be ${nb+n.amt}.`:
-    has('under',1)?`Undercroft intel: next push between ${nb} and ${nb+25}.`:
-    has('under',0)?`Undercroft intel: spike chance next turn ${Math.round(c*100)}%.`:'Hold someone in the Undercroft to learn more.';
-  $('turn').textContent=S.turn;$('ap').textContent=`${S.ap}/${maxAP()}`;$('gold').textContent=S.gold;
-  $('sBar').style.width=pct(S.sus,100);$('sTxt').textContent=`${S.sus}/100`;
-  $('vBar').style.width=pct(S.sub,100);$('vTxt').textContent=`${S.sub}/100${has('coll',2)?'':' · need the Provost to confront'}`;
-  $('confront').disabled=!(has('coll',2)&&S.sub>=100&&S.ap>0);
-  $('grid').innerHTML=INST.map((I,i)=>`<div class="panel inst"><h3>${I.name}</h3><div class="perk">${I.perk}</div>`+
-    I.people.map((p,t)=>{const k=key(i,t),T=TIER[t],h=S.held[k];
-      const can=!S.over&&S.ap>0&&S.gold>=T.gold&&free()>=T.upkeep&&(t===0||S.held[key(i,t-1)]);
-      return `<div class="tgt ${h?'held':''}"><div>${p}<br><small>Tier ${t+1} · mind ${T.upkeep} · ${T.gold}g</small></div>`+
-        (h?`<button onclick="release('${k}');render()">Release</button>`:`<button ${can?'':'disabled'} onclick="dominate(${i},${t})">Dominate</button>`)+`</div>`}).join('')+`</div>`).join('');
-  $('log').innerHTML=S.log.join('');
+function detail(){
+  if(S.sel==='spire'){
+    const ok=has('coll',2)&&S.sub>=100;
+    return `<h3>The Spire</h3><div class="perk">Seat of High Magister Veyl Sarrow. To face him you need Caldreth fully subverted (${S.sub}/100) and the Collegium's Provost as your thrall (${has('coll',2)?'held':'not held'}).</div>
+    <div class="perk">When you strike, the Illithid hits back with twice its nightly push (${Math.round(tonight()*2)} right now). Your free mind must be at least that, and with only the Provost held you could free ${S.mind-11}. Every night you wait, it grows.${Math.round(tonight()*2)>MAXMIND-11-8?' <span class="bad">The window is closing.</span>':''}</div>
+    <button class="primary" ${ok&&S.ap>0&&!S.over?'':'disabled'} onclick="confront()">Confront the High Magister</button>`;
+  }
+  const i=S.sel,I=INST[i],here=S.inq.at===i;
+  let h=`<h3>${I.name}</h3><div class="perk">${I.perk}</div>`;
+  if(here) h+=`<div class="perk bad">Inquisitor Roake is here. Each thrall has a 35% chance of exposure at nightfall, and you cannot take anyone new.<br>
+    <button ${S.ap>0&&!S.cloak?'':'disabled'} onclick="cloak()" style="margin-top:4px">${S.cloak?'Cloaked tonight':'Cloak thralls (1 action)'}</button>
+    <button class="risk" ${S.ap>0?'':'disabled'} onclick="seize()" style="margin-top:4px">Seize his mind (50%)</button></div>`;
+  I.people.forEach((p,t)=>{const k=key(i,t),T=TIER[t],held=S.held[k],opp=isOpp(k);
+    const base=!S.over&&S.ap>0&&free()>=T.upkeep&&!here;
+    const canD=base&&S.gold>=goldCost(i,t)&&(t===0||S.held[key(i,t-1)]||opp);
+    h+=`<div class="tgt ${held?'held':''}"><div><b>${p}</b><small>Rank ${t+1} · holds ${T.upkeep} mind · ${goldCost(i,t)} gold${opp?' <span class="gold">(opening: '+S.opp.turns+' night'+(S.opp.turns>1?'s':'')+')</span>':''}</small></div><div class="btns">`+
+      (held?`<button onclick="release('${k}')">Release</button>`:
+       `<button ${canD?'':'disabled'} title="Certain. Needs the gold and the rank below." onclick="take(${i},${t})">Dominate</button>
+        <button class="risk" ${base?'':'disabled'} title="No gold, no preparation, any rank. Failure raises suspicion and feeds the Illithid." onclick="take(${i},${t},1)">Force ${Math.round(forceChance(i,t)*100)}%</button>`)+`</div></div>`;});
+  return h;
 }
-// intro
+function render(){
+  const u=used(),p=Math.min(tonight(),Math.max(0,free())),m=margin();
+  $('mUsed').style.width=pct(u,MAXMIND);
+  $('mIll').style.left=pct(u,MAXMIND);$('mIll').style.width=pct(p,MAXMIND);
+  $('mFree').style.left=pct(u+p,MAXMIND);$('mFree').style.width=pct(Math.max(0,m),MAXMIND);
+  $('mFree').style.background=m>=22?'var(--mind)':m>=8?'#d0a040':'var(--sus)';
+  $('mTxt').innerHTML=`Mind ${S.mind}/${MAXMIND}: <span style="color:#b0a8bc">■ thralls hold ${u}</span> · <span class="ill">■ the Illithid pushes ${tonight()} tonight</span> · `+(m<0?`<b class="bad">SHORT BY ${-m}: it breaks through tonight</b>`:`<span style="color:${m>=22?'var(--mind)':m>=8?'#d0a040':'var(--sus)'}">■ spare will ${m}</span>`+(m<22?' (a surge of 8 to 22 could break it)':''));
+  $('turn').textContent=S.turn;$('gold').textContent=S.gold;
+  let pips='';for(let n=0;n<Math.max(maxAP(),S.ap);n++)pips+=`<span class="pip ${n<S.ap?'on':''}"></span>`;$('ap').innerHTML=pips;
+  $('endbtn').className=m<0?'danger':'primary';
+  $('sBar').style.width=pct(S.sus,100);$('sTxt').textContent=`${S.sus}/100`+(S.sus>=50?' · the Inquisitor hunts faster':'');
+  $('vBar').style.width=pct(S.sub,100);$('vTxt').textContent=`${S.sub}/100`;
+  // cell
+  const c=S.ill.spikeChance,a=c<.2?0:c<.35?1:c<.5?2:3,press=tonight()/Math.max(1,free()),cr=press<.6?0:press<.8?1:press<1?2:3;
+  $('cell').setAttribute('class',`a${a} c${cr} ${S.ill.fedTurns?'sated':''}`);
+  $('aura').setAttribute('r',40+Math.min(1.2,press)*90);
+  $('ward1').style.opacity=Math.max(.15,1-press*.8);$('ward2').style.opacity=Math.max(.1,1-press);
+  $('iOmen').textContent=(S.ill.fedTurns?`Sated for ${S.ill.fedTurns} more night${S.ill.fedTurns>1?'s':''}. `:'')+['It is quiet. Too quiet.','You feel it testing the edges of your will.','Whispers. It is gathering itself.','It is coiled to strike. A surge is coming.'][a];
+  $('iRest').innerHTML=`Power ${S.ill.base}. `+(S.chan?'You worked it hard tonight; it stays tired.':'<span class="bad">Idle tonight: it will rest and gain +1 power.</span>');
+  const n=S.ill.next;
+  $('iIntel').textContent=has('under',2)?(n.spike?`The Mother of Keys: a surge of +${n.amt} comes tonight.`:'The Mother of Keys: no surge tonight.'):
+    has('under',1)?(n.spike?'Old Marrow: it will surge tonight.':'Old Marrow: no surge tonight.'):
+    has('under',0)?`Nim's guess: ${Math.round(c*100)}% chance of a surge tonight (they add 8 to 22).`:'Surges add 8 to 22 without warning. Spies in the Undercroft could warn you.';
+  // garret
+  $('sanct').setAttribute('class','p-'+S.pose);
+  $('trap').style.opacity=Math.min(1,.15+press*.7);
+  $('pcap').textContent=POSE[S.pose];
+  // side
+  $('detail').innerHTML=detail();
+  const g=Math.min(3+tiersIn('temple'),MAXMIND-S.mind);
+  $('medS').textContent=g>0?`+${g} mind`:'Mind is at its limit';
+  $('bMed').disabled=S.ap<1||g<=0;$('bLie').disabled=S.ap<1||S.sus<=0;$('bBor').disabled=S.borrowed;$('bFeed').disabled=S.ap<1||!thralls().length;
+  $('log').innerHTML=S.log.join('');
+  drawMap();
+}
+buildMap();
 newGame();
 modal(`<h1>Dangerous Servant / Cruel Master</h1>
 <p>The High Magister Veyl Sarrow burned your family and then broke you in open duel. You crawled away with one idea left: mind magic, which no human may wield unless they have survived a mind attack and turned it back on the creature that made it.</p>
-<p>So you summoned an Illithid. It struck, you barely held, and now it is yours. Through it you can bend minds across the kingdom of Caldreth. But it never stops pushing to break free.</p>
-<p><b>How to play.</b> Each turn you have actions. Dominate people in six institutions, climbing from the lowest rank up; each thrall occupies mind strength. Your <i>free</i> mind must stay above the Illithid's push at the end of each turn, and sometimes it spikes without warning. Thralls build Subversion and grant their institution's perk. Reach 100 Subversion, hold the Collegium's Provost, and confront the Magister. Let suspicion reach 100, or let the Illithid through, and you lose.</p>
+<p>So you summoned an Illithid. It struck, you barely held, and now it sits in a cell beneath your garret. Through it you can bend minds across the city of Caldreth. It never stops pushing to break free, and <b>every night it grows stronger</b>.</p>
+<p><b>How to play.</b> Click a place on the map to see who can be taken there. <i>Dominate</i> is certain but needs gold and the rank below; <i>Force</i> needs neither, and can fail badly. Each thrall holds part of your mind. The bar at the top shows what is left against tonight's push, and a surge can add 8 to 22 without warning.</p>
+<p><b>You cannot wait it out.</b> A night in which you do not work the Illithid lets it rest and gain power. The Magister's Inquisitor walks the city looking for your thralls. Subvert Caldreth to 100, take the Collegium's Provost, then climb the Spire before the thing in the cell outgrows you.</p>
 <button class="primary" onclick="closeModal()">Begin</button>`);
 </script>
 </body>
