@@ -241,7 +241,7 @@ button.danger{background:#6a2430;border-color:#c0505a}
       <div class="perk">The Illithid wears your body. You get one act each night, and then the night passes.</div>
       <div class="acts">
         <button onclick="flipAct('gather')">Gather yourself<small>+5 ember</small></button>
-        <button id="fReach" onclick="flipAct('reach')">Cry out through a thrall<small>+10 ember, the link burns out</small></button>
+        <button id="fReach" onclick="cryMenu()">Cry out through a thrall…<small>+8, +11 or +14 ember by rank; the link burns out</small></button>
         <button id="fBreak" class="risk" style="grid-column:1/3" onclick="flipAct('break')">Break free<small id="fBreakS"></small></button>
       </div>
     </div>
@@ -596,13 +596,19 @@ function fall(msg){
   log(msg+' The ward breaks. The cell is empty. <i>"Dangerous servant. Cruel master. Now we change places."</i>','ill');
   render();
   modal(`<h2 class="ill">The Reversal</h2><p>${msg}</p><p>It does not kill you. It <b>wears</b> you. It walks out of the cell in your body, with your thralls and your face, and you are the one locked away, a passenger behind your own eyes.</p>
-  <p>What is left of you is an <b>ember</b>. It fades by 3 every night. Each night you may do one thing: gather yourself, cry out through one of your old thralls, or try to <b>break free</b>. The brighter the ember, the better your chance${S.pacts?', though every bargain you struck with it ('+S.pacts+') makes the door heavier':''}.</p>
+  <p>What is left of you is an <b>ember</b>. It fades by 3 every night. Each night you may do one thing: gather yourself, cry out through one of your old thralls (you choose which), or try to <b>break free</b>. The brighter the ember, the better your chance${S.pacts?', though every bargain you struck with it ('+S.pacts+') makes the door heavier':''}.</p>
   <p>It feeds carelessly, so the Magister's suspicion climbs fast. If he finds it, or your ember goes out, it is over. And if you win your body back, know that it will not let you do it twice.</p>
   <button class="primary" onclick="closeModal()">Endure</button>`);
 }
-function flipAct(a){
+const cryGain=k=>8+3*tierOf(k);
+function cryMenu(){
+  if(!S.flip||S.over) return;
+  modal('<h2 class="ill">Cry out through a thrall</h2><p>Choose whose mind carries your voice. The stronger the mind, the more of you it gives back. The link burns out, and the night passes.</p>'+
+    thralls().map(k=>`<button style="margin:3px" onclick="flipAct('reach','${k}')">${nameOf(k)} (+${cryGain(k)} ember)</button>`).join('')+'<p><button onclick="closeModal()">Cancel</button></p>');
+}
+function flipAct(a,k){
   const F=S.flip;if(!F||S.over) return;
-  if(a==='reach'){const l=thralls();if(!l.length) return;const k=pick(l);F.ember+=10;log(`You pour what is left of you through ${release(k,true)}. For a moment somebody hears you. Then the link burns out. (+10 ember)`,'good');}
+  if(a==='reach'){if(!S.held[k]) return;closeModal();const g=cryGain(k);F.ember+=g;log(`You pour what is left of you through ${release(k,true)}. For a moment somebody hears you. Then the link burns out. (+${g} ember)`,'good');}
   if(a==='gather'){F.ember+=5;log('You gather the scraps of yourself in the dark. (+5 ember)');}
   if(a==='break'){
     if(R()*100<breakChance()) return rise();
