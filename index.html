@@ -278,7 +278,7 @@ const TIER = [
 ];
 const maxMind=()=>70+(S.insight||0);
 // What you learn of its mind while it wears you: more for every night you endure.
-const insight=()=>Math.min(20,4+2*(S.flip.nights||0));
+const insight=()=>Math.min(30,6+4*(S.flip.nights||0));
 const INST = [
   {id:'coin', x:330,y:285, name:'The Gilded Consortium', perk:'Merchant guild. Each thrall earns +3 gold per rank, every night. A rank 2 thrall can bribe officials and can bury the Magister\'s audits.',
    people:['Ledger-clerk Pell','Factor Imra Dole','Guildmaster Osk Varrin']},
@@ -608,7 +608,7 @@ function fall(msg){
   render();
   modal(`<h2 class="ill">The Reversal</h2><p>${msg}</p><p>It does not kill you. It <b>wears</b> you. It walks out of the cell in your body, with your thralls and your face, and you are the one locked away, a passenger behind your own eyes.</p>
   <p>What is left of you is an <b>ember</b>. It fades by 3 every night. Each night you may do one thing: gather yourself, cry out through one of your old thralls (you choose which), or try to <b>break free</b>. The brighter the ember, the better your chance${S.pacts?', though every bargain you struck with it ('+S.pacts+') makes the door heavier':''}.</p>
-  <p>There is one thing to gain. From in here you can see how its mind is built. If you get out, your <b>maximum mind rises by 4, plus 2 for every night you endured</b> (up to +20). Staying longer teaches you more, and risks everything.</p>
+  <p>There is one thing to gain. From in here you can see how its mind is built. If you get out, your <b>maximum mind rises by 6, plus 4 for every night you endured</b> (up to +30). Staying longer teaches you more, and risks everything.</p>
   <p>It feeds carelessly, so the Magister's suspicion climbs fast. If he finds it, or your ember goes out, it is over. And if you win your body back, know that it will not let you do it twice.</p>
   <button class="primary" onclick="closeModal()">Endure</button>`);
 }
@@ -669,7 +669,7 @@ function help(){
   <p><b>Places.</b> Consortium: gold, bribes. Watch: lowers suspicion, blunts the Inquisitor, can call him off. Temple: weakens surges, better meditation. Lantern Court: less suspicion per taking, can cancel the Magister's orders. Undercroft: warns of surges (and of lies), blackmail. Collegium: weakens the Illithid, needed to win. Schemes need a rank 2 thrall.</p>
   <p><b>The Magister.</b> His orders appear above the map one night before they land. A rank 2 thrall in the named institution stops one for an action. His Inquisitor searches a district for two nights; cloak your thralls or risk seizing him.</p>
   <p><b>Winning.</b> 100 subversion and the Collegium's Provost, then click the Spire. The Illithid hits back with twice its nightly push, so do not leave it too late.</p>
-  <p><b>Losing control.</b> If the Illithid breaks free it wears your body, and you get one slim chance to take it back. If you do, what you saw of its mind raises your maximum mind: +4, and +2 more for each night you endured, up to +20. Suspicion at 100 ends the game outright.</p>
+  <p><b>Losing control.</b> If the Illithid breaks free it wears your body, and you get one slim chance to take it back. If you do, what you saw of its mind raises your maximum mind: +6, and +4 more for each night you endured, up to +30. Suspicion at 100 ends the game outright.</p>
   <p class="dim">The game saves itself in this browser after every action.</p>
   <button class="primary" onclick="closeModal()">Close</button>`);
 }
