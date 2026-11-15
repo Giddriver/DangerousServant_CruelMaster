@@ -19,7 +19,16 @@ button.danger{background:#6a2430;border-color:#c0505a}
 #app{max-width:1440px;margin:0 auto;padding:10px;display:grid;gap:10px;grid-template-columns:330px minmax(0,1fr) 320px;grid-template-areas:"hud hud hud" "left map side"}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px}
 #hud{grid-area:hud;display:flex;gap:18px;align-items:center;flex-wrap:wrap}
-#hud .ttl{font-size:17px;letter-spacing:.06em}
+#hud .ttl{font-size:17px;letter-spacing:.06em;display:flex;align-items:flex-start;gap:8px}
+.role{display:flex;flex-direction:column;align-items:center;transition:color 1.2s,text-shadow 1.2s,opacity 1.2s}
+.role small{font-size:9px;letter-spacing:.22em;text-transform:uppercase;margin-top:1px}
+.role.you{color:#9cc6ff;text-shadow:0 0 10px #5aa0ff}
+.role.it{color:#e3a8f5;text-shadow:0 0 10px #c04de0}
+.role.caged{opacity:.55;text-shadow:none}
+.role.rules{animation:rule 1.6s ease-in-out infinite alternate}
+@keyframes rule{from{text-shadow:0 0 6px currentColor}to{text-shadow:0 0 18px currentColor,0 0 4px #fff}}
+.slash{transition:transform 1.2s;display:inline-block}
+.flipped .slash{transform:scaleX(-1)}
 #hud b{font-weight:normal;color:var(--dim);font-size:12px;letter-spacing:.1em;text-transform:uppercase;margin-right:4px}
 #willwrap{flex:1;min-width:300px}
 .bar{height:22px;background:#000;border-radius:5px;position:relative;overflow:hidden}
@@ -107,7 +116,7 @@ button.danger{background:#6a2430;border-color:#c0505a}
 <body>
 <div id="app">
   <div id="hud" class="panel">
-    <div class="ttl">Dangerous Servant <span class="ill">/</span> Cruel Master</div>
+    <div class="ttl" id="ttl"><span class="role" id="tS">Dangerous Servant<small id="tSl"></small></span><span class="ill slash">/</span><span class="role" id="tM">Cruel Master<small id="tMl"></small></span></div>
     <div><b>Night</b><span id="turn"></span></div>
     <div><b>Gold</b><span id="gold" class="gold"></span></div>
     <div><b>Actions</b><span id="ap"></span></div>
@@ -267,7 +276,9 @@ const TIER = [
   {upkeep:7, gold:25, sus:9,  force:.45, r:7.5},
   {upkeep:11,gold:50, sus:14, force:.30, r:9},
 ];
-const MAXMIND=70;
+const maxMind=()=>70+(S.insight||0);
+// What you learn of its mind while it wears you: more for every night you endure.
+const insight=()=>Math.min(20,4+2*(S.flip.nights||0));
 const INST = [
   {id:'coin', x:330,y:285, name:'The Gilded Consortium', perk:'Merchant guild. Each thrall earns +3 gold per rank, every night. A rank 2 thrall can bribe officials and can bury the Magister\'s audits.',
    people:['Ledger-clerk Pell','Factor Imra Dole','Guildmaster Osk Varrin']},
@@ -303,7 +314,7 @@ const EDICTS={
   wards:{by:'coll',say:()=>'will raise mind-wards over the city (Force odds −20% for 3 nights)',
     hit:()=>{S.wards=4;log('The Magister raises wards over Caldreth. Unprepared minds are harder to break. (Force −20%, 3 nights)','bad');}}};
 const pick=a=>a[Math.floor(R()*a.length)];
-const gain=n=>{S.mind=Math.min(MAXMIND,S.mind+n);};
+const gain=n=>{S.mind=Math.min(maxMind(),S.mind+n);};
 // Night events: [label, effect returning the outcome text, optional condition]
 const EVENTS=[
   {t:'A thrall wavers',ok:()=>thralls().length>0,pre:()=>{S.ev.k=pick(thralls());},
@@ -460,7 +471,7 @@ function act(a){
     return render();
   }
   if(S.ap<1) return;
-  if(a==='meditate'){const g=Math.min(3+tiersIn('temple'),MAXMIND-S.mind);if(g<=0) return;S.mind+=g;S.pose='meditate';log(`You meditate. Mind strength +${g}.`,'good');}
+  if(a==='meditate'){const g=Math.min(3+tiersIn('temple'),maxMind()-S.mind);if(g<=0) return;S.mind+=g;S.pose='meditate';log(`You meditate. Mind strength +${g}.`,'good');}
   if(a==='lielow'){S.sus=Math.max(0,S.sus-10);S.pose='lielow';log('You keep your head down. Suspicion −10.');}
   S.ap--;render();
 }
@@ -592,11 +603,12 @@ const breakChance=()=>Math.max(5,Math.min(85,(S.flip.ember-12)*3-4*S.pacts));
 function fall(msg){
   closeModal();S.pending=null;
   if(S.fallen) return end(false,msg+' You have been here before, and this time it has learned every way you got out. It wears you now, for good.');
-  S.flip={ember:Math.min(24,8+2*thralls().length)};S.ap=0;S.pose='worn';S.mag.edict=null;S.inq={at:-1,next:-1,eta:6};S.opp=null;
+  S.flip={ember:Math.min(24,8+2*thralls().length),nights:0};S.ap=0;S.pose='worn';S.mag.edict=null;S.inq={at:-1,next:-1,eta:6};S.opp=null;
   log(msg+' The ward breaks. The cell is empty. <i>"Dangerous servant. Cruel master. Now we change places."</i>','ill');
   render();
   modal(`<h2 class="ill">The Reversal</h2><p>${msg}</p><p>It does not kill you. It <b>wears</b> you. It walks out of the cell in your body, with your thralls and your face, and you are the one locked away, a passenger behind your own eyes.</p>
   <p>What is left of you is an <b>ember</b>. It fades by 3 every night. Each night you may do one thing: gather yourself, cry out through one of your old thralls (you choose which), or try to <b>break free</b>. The brighter the ember, the better your chance${S.pacts?', though every bargain you struck with it ('+S.pacts+') makes the door heavier':''}.</p>
+  <p>There is one thing to gain. From in here you can see how its mind is built. If you get out, your <b>maximum mind rises by 4, plus 2 for every night you endured</b> (up to +20). Staying longer teaches you more, and risks everything.</p>
   <p>It feeds carelessly, so the Magister's suspicion climbs fast. If he finds it, or your ember goes out, it is over. And if you win your body back, know that it will not let you do it twice.</p>
   <button class="primary" onclick="closeModal()">Endure</button>`);
 }
@@ -614,7 +626,7 @@ function flipAct(a,k){
     if(R()*100<breakChance()) return rise();
     F.ember-=8;log('You throw yourself at the inside of your own skull. It notices, and squeezes. (−8 ember)','bad');}
   // its night
-  S.turn++;F.ember-=3;S.sus+=8;S.sub=Math.max(0,S.sub-3);
+  S.turn++;F.nights=(F.nights||0)+1;F.ember-=3;S.sus+=8;S.sub=Math.max(0,S.sub-3);
   const l=thralls();
   if(S.turn%2===0){
     if(l.length){S.sus+=4;log(`Wearing your face, the Illithid calls on ${release(pick(l),true)}, and feeds. (+4 suspicion)`,'ill');}
@@ -625,12 +637,14 @@ function flipAct(a,k){
   render();
 }
 function rise(){
+  const ins=insight();S.insight=(S.insight||0)+ins;
   S.mind=Math.max(25,Math.min(50,S.flip.ember+15));S.flip=null;S.fallen=true;
   S.ill.base+=2;S.ill.spikeChance=.1;S.ill.fedTurns=2;S.ap=maxAP();S.chan=false;S.borrowed=false;S.pose='brace';S.mag.eta=3;
   S.turn++;rollNext();whisper();S.ill.say='That will not work a second time.';S.ill.claim=null;
-  log(`You tear your body back and slam the thing into its cell. You are yourself, barely. (Mind ${S.mind}, Illithid +2 power, stunned for 2 nights)`,'good');
+  log(`You tear your body back and slam the thing into its cell. You are yourself, barely. (Mind ${S.mind}, maximum mind +${ins}, Illithid +2 power, stunned for 2 nights)`,'good');
   render();
   modal(`<h2 class="good">You are yourself again</h2><p>You find the one thread of will it overlooked and pull. The ward snaps shut around it. It is back in the cell, stunned for two nights, stronger than before and very much awake.</p>
+  <p>While it wore you, you saw how its mind is built, from the inside. <b class="good">Your mind can now grow to ${maxMind()} (+${ins}).</b></p>
   <p>Your mind is at ${S.mind}. ${margin()<0?'<b class="bad">That is not enough to hold your remaining thralls tonight: release some before the night ends.</b> ':''}If it breaks free again, there is no coming back.</p><button class="primary" onclick="closeModal()">Continue</button>`);
 }
 // ----- Saving, help, guide
@@ -655,7 +669,7 @@ function help(){
   <p><b>Places.</b> Consortium: gold, bribes. Watch: lowers suspicion, blunts the Inquisitor, can call him off. Temple: weakens surges, better meditation. Lantern Court: less suspicion per taking, can cancel the Magister's orders. Undercroft: warns of surges (and of lies), blackmail. Collegium: weakens the Illithid, needed to win. Schemes need a rank 2 thrall.</p>
   <p><b>The Magister.</b> His orders appear above the map one night before they land. A rank 2 thrall in the named institution stops one for an action. His Inquisitor searches a district for two nights; cloak your thralls or risk seizing him.</p>
   <p><b>Winning.</b> 100 subversion and the Collegium's Provost, then click the Spire. The Illithid hits back with twice its nightly push, so do not leave it too late.</p>
-  <p><b>Losing control.</b> If the Illithid breaks free it wears your body, and you get one slim chance to take it back. Suspicion at 100 ends the game outright.</p>
+  <p><b>Losing control.</b> If the Illithid breaks free it wears your body, and you get one slim chance to take it back. If you do, what you saw of its mind raises your maximum mind: +4, and +2 more for each night you endured, up to +20. Suspicion at 100 ends the game outright.</p>
   <p class="dim">The game saves itself in this browser after every action.</p>
   <button class="primary" onclick="closeModal()">Close</button>`);
 }
@@ -836,7 +850,7 @@ function detail(){
   if(S.sel==='spire'){
     const ok=has('coll',2)&&S.sub>=100;
     return `<h3>The Spire</h3><div class="perk">Seat of High Magister Veyl Sarrow. To face him you need Caldreth fully subverted (${S.sub}/100) and the Collegium's Provost as your thrall (${has('coll',2)?'held':'not held'}).</div>
-    <div class="perk">When you strike, the Illithid hits back with twice its nightly push (${Math.round(tonight()*2)} right now). Your free mind must be at least that, and with only the Provost held you could free ${S.mind-11}. Every night you wait, it grows.${Math.round(tonight()*2)>MAXMIND-11-8?' <span class="bad">The window is closing.</span>':''}</div>
+    <div class="perk">When you strike, the Illithid hits back with twice its nightly push (${Math.round(tonight()*2)} right now). Your free mind must be at least that, and with only the Provost held you could free ${S.mind-11}. Every night you wait, it grows.${Math.round(tonight()*2)>maxMind()-11-8?' <span class="bad">The window is closing.</span>':''}</div>
     <button class="primary" ${ok&&S.ap>0&&!S.over?'':'disabled'} onclick="confront()">Confront the High Magister</button>`;
   }
   const i=S.sel,I=INST[i],here=S.inq.at===i;
@@ -858,11 +872,15 @@ function detail(){
 }
 function render(){
   const u=used(),p=Math.min(tonight(),Math.max(0,free())),m=margin(),F=S.flip;
-  $('mUsed').style.width=pct(F?0:u,MAXMIND);
-  $('mIll').style.left=pct(F?F.ember:u,MAXMIND);$('mIll').style.width=pct(F?MAXMIND:p,MAXMIND);
-  $('mFree').style.left=pct(F?0:u+p,MAXMIND);$('mFree').style.width=pct(F?F.ember:Math.max(0,m),MAXMIND);
+  $('mUsed').style.width=pct(F?0:u,maxMind());
+  $('mIll').style.left=pct(F?F.ember:u,maxMind());$('mIll').style.width=pct(F?maxMind():p,maxMind());
+  $('mFree').style.left=pct(F?0:u+p,maxMind());$('mFree').style.width=pct(F?F.ember:Math.max(0,m),maxMind());
   $('mFree').style.background=F?'#ffb347':m>=22?'var(--mind)':m>=8?'#d0a040':'var(--sus)';
-  $('mTxt').innerHTML=F?`<span style="color:#ffb347">■ Your ember: ${F.ember}</span> (fades by 3 each night) · <span class="ill">■ the Illithid has everything else</span> · chance to break free now: <b>${breakChance()}%</b>`:`Mind ${S.mind}/${MAXMIND}: <span style="color:#b0a8bc">■ thralls hold ${u}</span> · <span class="ill">■ the Illithid pushes ${tonight()} tonight</span> · `+(m<0?`<b class="bad">SHORT BY ${-m}: it breaks through tonight</b>`:`<span style="color:${m>=22?'var(--mind)':m>=8?'#d0a040':'var(--sus)'}">■ spare will ${m}</span>`+(m<22?' (a surge of 8 to 22 could break it)':''));
+  $('mTxt').innerHTML=F?`<span style="color:#ffb347">■ Your ember: ${F.ember}</span> (fades by 3 each night) · <span class="good">insight if you escape: +${insight()} maximum mind</span> · <span class="ill">■ the Illithid has everything else</span> · chance to break free now: <b>${breakChance()}%</b>`:`Mind ${S.mind}/${maxMind()}: <span style="color:#b0a8bc">■ thralls hold ${u}</span> · <span class="ill">■ the Illithid pushes ${tonight()} tonight</span> · `+(m<0?`<b class="bad">SHORT BY ${-m}: it breaks through tonight</b>`:`<span style="color:${m>=22?'var(--mind)':m>=8?'#d0a040':'var(--sus)'}">■ spare will ${m}</span>`+(m<22?' (a surge of 8 to 22 could break it)':''));
+  // title: who is the servant and who is the master right now
+  $('ttl').classList.toggle('flipped',!!F);
+  $('tS').className='role caged '+(F?'you':'it');$('tSl').textContent=F?'you':'the Illithid';
+  $('tM').className='role rules '+(F?'it':'you');$('tMl').textContent=F?'the Illithid':'you';
   $('turn').textContent=S.turn;$('gold').textContent=S.gold;
   let pips='';for(let n=0;n<Math.max(maxAP(),S.ap);n++)pips+=`<span class="pip ${n<S.ap?'on':''}"></span>`;$('ap').innerHTML=pips;
   $('endbtn').className=m<0&&!F?'danger':'primary';$('endbtn').disabled=!!F;
@@ -898,7 +916,7 @@ function render(){
   $('mag').innerHTML=mh+(fl.length?` <span class="gold">In force: ${fl.join(', ')}.</span>`:'');
   // side
   $('detail').innerHTML=detail();
-  const g=Math.min(3+tiersIn('temple'),MAXMIND-S.mind);
+  const g=Math.min(3+tiersIn('temple'),maxMind()-S.mind);
   $('medS').textContent=g>0?`+${g} mind`:'Mind is at its limit';
   $('bMed').disabled=S.ap<1||g<=0;$('bLie').disabled=S.ap<1||S.sus<=0;$('bBor').disabled=S.borrowed;$('bFeed').disabled=S.ap<1||!thralls().length;
   $('log').innerHTML=S.log.join('');
