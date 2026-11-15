@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dangerous Servant / Cruel Master</title>
+<style>
+:root{--bg:#0f0d14;--panel:#1a1622;--line:#2e2838;--text:#e6e0ee;--dim:#9a90a8;--mind:#5aa0ff;--ill:#c04de0;--gold:#e0b84d;--sus:#e05a4d;--ok:#5ad08a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 Georgia,serif}
+h1,h2,h3{margin:.2em 0;font-weight:normal}
+button{font:inherit;background:#2a2336;color:var(--text);border:1px solid #4a3f5c;border-radius:6px;padding:6px 10px;cursor:pointer}
+button:hover:not(:disabled){background:#3a3050}
+button:disabled{opacity:.4;cursor:default}
+button.primary{background:#4b2a63;border-color:#7a4aa0}
+#app{max-width:1200px;margin:0 auto;padding:16px}
+.top{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px}
+.bar{height:22px;background:#000;border-radius:5px;position:relative;overflow:hidden;margin:4px 0}
+.bar>div{position:absolute;top:0;bottom:0}
+.bar span{position:absolute;inset:0;text-align:center;font-size:13px;line-height:22px;text-shadow:0 0 3px #000}
+.stats{display:flex;gap:18px;flex-wrap:wrap;margin-top:8px}
+.stats b{font-weight:normal;color:var(--dim)}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:12px}
+.inst h3{font-size:17px}
+.inst .perk{color:var(--dim);font-size:13px;min-height:36px}
+.tgt{display:flex;justify-content:space-between;align-items:center;gap:6px;border-top:1px solid var(--line);padding:6px 0;font-size:14px}
+.tgt.held{color:var(--ok)}
+.tgt small{color:var(--dim)}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;align-items:center}
+#log{height:180px;overflow:auto;font-size:13px;margin-top:12px}
+#log p{margin:2px 0}
+.ill{color:var(--ill)}.bad{color:var(--sus)}.good{color:var(--ok)}.gold{color:var(--gold)}
+.modal{position:fixed;inset:0;background:#000c;display:flex;align-items:center;justify-content:center;padding:16px;z-index:9}
+.modal .panel{max-width:620px;width:100%}
+.hidden{display:none}
+@media(max-width:800px){.top,.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="top">
+    <div class="panel">
+      <h2>Your Mind</h2>
+      <div class="bar" title="Blue: mind held free. Grey: mind spent holding thralls."><div id="mUsed" style="background:#555"></div><div id="mFree" style="background:var(--mind)"></div><span id="mTxt"></span></div>
+      <div class="stats">
+        <div><b>Turn</b> <span id="turn"></span></div>
+        <div><b>Actions</b> <span id="ap"></span></div>
+        <div><b>Gold</b> <span id="gold" class="gold"></span></div>
+      </div>
+      <div style="margin-top:6px">Suspicion of the High Magister</div>
+      <div class="bar"><div id="sBar" style="background:var(--sus)"></div><span id="sTxt"></span></div>
+      <div style="margin-top:6px">Subversion of Caldreth</div>
+      <div class="bar"><div id="vBar" style="background:var(--ok)"></div><span id="vTxt"></span></div>
+    </div>
+    <div class="panel">
+      <h2 class="ill">The Illithid</h2>
+      <div class="bar" title="The Illithid's steady push against your free mind"><div id="iBar" style="background:var(--ill)"></div><span id="iTxt"></span></div>
+      <div id="iOmen" class="ill" style="min-height:44px"></div>
+      <div id="iIntel" style="color:var(--dim);font-size:13px"></div>
+      <div class="actions">
+        <button onclick="act('meditate')">Meditate (+mind)</button>
+        <button onclick="act('lielow')">Lie low (−suspicion)</button>
+        <button onclick="act('feed')">Let it feed…</button>
+        <button id="confront" class="primary" onclick="act('confront')">Confront the High Magister</button>
+        <button class="primary" onclick="endTurn()">End turn ▸</button>
+      </div>
+    </div>
+  </div>
+  <div class="grid" id="grid"></div>
+  <div class="panel" id="log"></div>
+</div>
+
+<div id="modal" class="modal hidden"><div class="panel" id="mbody"></div></div>
+
+<script>
+// ---------- Data ----------
+const TIER = [
+  {upkeep:4, gold:10, sus:5},
+  {upkeep:7, gold:25, sus:9},
+  {upkeep:11,gold:50, sus:14},
+];
+const INST = [
+  {id:'coin', name:'The Gilded Consortium', perk:'Merchant guild. Each thrall here earns +3 gold per tier, every turn.',
+   people:['Ledger-clerk Pell','Factor Imra Dole','Guildmaster Osk Varrin']},
+  {id:'watch',name:'The Ashen Watch', perk:'City guard. Each thrall here lowers suspicion by 1 per tier, every turn.',
+   people:['Sergeant Hale','Captain Bree Tamsin','Lord-Marshal Cade Orwen']},
+  {id:'temple',name:'Temple of the Still Flame', perk:'Clergy. Meditation grants +1 extra mind per tier held here.',
+   people:['Acolyte Senn','Confessor Mirelle','The Hierarch Aubric']},
+  {id:'court',name:'The Lantern Court', perk:'Noble houses. Holding the Lady Chancellor grants +1 action each turn.',
+   people:['Page Willem','Baron Tesk Ardane','Lady Chancellor Ysolde Crane']},
+  {id:'under',name:'The Undercroft', perk:'Thieves & spies. Tier 1: spike odds. Tier 2: next push range. Tier 3: exact next push.',
+   people:['Cutpurse Nim','Fence Old Marrow','The Mother of Keys']},
+  {id:'coll', name:'Collegium of the Ninth Seal', perk:'The High Magister\'s own academy. Its wards weaken the Illithid by 1 per tier. Its head is needed to confront him. Double suspicion.',
+   people:['Apprentice Lio','Warden-Magus Fenna','Provost Dravik Sol']},
+];
+
+// ---------- State ----------
+let S;
+function newGame(){
+  S = {turn:1, ap:2, gold:30, mind:40, sus:0, sub:0,
+       ill:{base:14, spikeChance:.10, fed:0, fedTurns:0, next:null},
+       held:{}, over:false, log:[]};
+  rollNext();
+  log('You hold the Illithid by a thread of will. In Caldreth, the High Magister Veyl Sarrow sits at the king\'s right hand, unaware.', 'ill');
+  render();
+}
+const key=(i,t)=>INST[i].id+t;
+const thralls=()=>Object.keys(S.held).filter(k=>S.held[k]);
+const tierOf=k=>+k.slice(-1);
+const instOf=k=>INST.findIndex(x=>k.startsWith(x.id)&&k.length===x.id.length+1);
+const used=()=>thralls().reduce((a,k)=>a+TIER[tierOf(k)].upkeep,0);
+const free=()=>S.mind-used();
+const tiersIn=id=>thralls().filter(k=>INST[instOf(k)].id===id).reduce((a,k)=>a+tierOf(k)+1,0);
+const has=(id,t)=>!!S.held[id+t];
+const maxAP=()=>2+(has('court',2)?1:0);
+const basePush=()=>Math.max(5,S.ill.base-tiersIn('coll')-(S.ill.fedTurns>0?8:0));
+
+// Pre-roll next turn's push so the Undercroft can reveal it.
+function rollNext(){
+  const spike = Math.random()<S.ill.spikeChance;
+  const amt = spike ? 10+Math.floor(Math.random()*16) : 0;
+  S.ill.next={spike, amt};
+}
+function log(m,c=''){S.log.unshift(`<p class="${c}">[T${S.turn}] ${m}</p>`);S.log=S.log.slice(0,80);}
+
+// ---------- Actions ----------
+function act(a){
+  if(S.over) return;
+  if(a==='confront') return confront();
+  if(a==='feed') return feedMenu();
+  if(S.ap<1) return;
+  if(a==='meditate'){const g=Math.min(3+tiersIn('temple'),70-S.mind);if(g<=0){log('Your mind is as strong as it can be (70).');return render();}S.mind+=g;log(`You meditate in the dark. Mind strength +${g}.`,'good');}
+  if(a==='lielow'){S.sus=Math.max(0,S.sus-12);log('You keep your head down. Suspicion −12.');}
+  S.ap--;render();
+}
+function dominate(i,t){
+  const T=TIER[t],k=key(i,t),p=INST[i].people[t];
+  if(S.ap<1||S.gold<T.gold||free()<T.upkeep) return;
+  if(t>0&&!S.held[key(i,t-1)]) return;
+  S.gold-=T.gold;S.ap--;S.held[k]=true;
+  const sus=T.sus*(INST[i].id==='coll'?2:1);S.sus+=sus;
+  log(`Through the Illithid you slip into ${p}'s mind. They are yours. (−${T.upkeep} free mind, +${sus} suspicion)`,'good');
+  render();checkSus();
+}
+function release(k,quiet){
+  S.held[k]=false;
+  const p=INST[instOf(k)].people[tierOf(k)];
+  if(!quiet){S.sus+=2;log(`You release ${p}. They wake confused. (+2 suspicion)`);}
+  return p;
+}
+function feedMenu(){
+  if(S.ap<1) return;
+  const list=thralls();
+  if(!list.length){log('There is no mind to offer it.','bad');return render();}
+  modal(`<h2 class="ill">Let it feed</h2><p>Offer a thrall's mind to the Illithid. It will be sated (−8 push for 3 turns), but it grows stronger forever (+2 base push). The thrall is destroyed.</p>`+
+    list.map(k=>`<button style="margin:3px" onclick="feed('${k}')">${INST[instOf(k)].people[tierOf(k)]}</button>`).join('')+
+    `<p><button onclick="closeModal()">Cancel</button></p>`);
+}
+function feed(k){
+  closeModal();const p=release(k,true);
+  S.ill.fedTurns=3;S.ill.base+=2;S.sus+=6;S.ap--;
+  log(`The Illithid devours ${p}'s mind. It is quiet, for now. (+6 suspicion)`,'ill');
+  render();checkSus();
+}
+function confront(){
+  if(!has('coll',2)||S.sub<100||S.ap<1) return;
+  const push=Math.round(basePush()*2.5);
+  modal(`<h2>The Confrontation</h2><p>You walk into the Magister's tower with the Collegium's Provost at your side and a kingdom already rotting under him. Veyl Sarrow recognises you, too late.</p>
+  <p>To break his mind you must loose the Illithid's full power through yourself. In that instant it will strike back with <b class="ill">${push}</b> force. You have <b>${free()}</b> free mind.</p>
+  <p>Release thralls first if you need to. This is your only chance.</p>
+  <button class="primary" onclick="finalStrike(${push})">Strike</button> <button onclick="closeModal()">Not yet</button>`);
+}
+function finalStrike(push){
+  closeModal();
+  if(free()>=push) end(true,'The Magister\'s mind breaks against yours. Your family is avenged, and Caldreth answers to you now. But the thing in your head is watching, and it is patient.');
+  else end(false,'At the moment of triumph your grip slips. The Illithid surges through the gap and takes you both. The Magister is dead; so are you, in every way that matters.');
+}
+
+// ---------- Turn ----------
+function endTurn(){
+  if(S.over) return;
+  // income & upkeep effects
+  let inc=2+thralls().filter(k=>k.startsWith('coin')).reduce((a,k)=>a+3*(tierOf(k)+1),0);
+  S.gold+=inc;
+  const sub=thralls().reduce((a,k)=>a+tierOf(k)+1,0);
+  S.sub=Math.min(100,S.sub+sub);
+  S.sus=Math.max(0,S.sus-2-tiersIn('watch')+thralls().filter(k=>tierOf(k)===2).length);
+  log(`Thralls work in the shadows: +${inc} gold, +${sub} subversion.`,'gold');
+  if(checkSus()) return;
+  // Illithid
+  S.turn++;
+  if(S.turn%3===0) S.ill.base++;
+  const n=S.ill.next, push=basePush()+n.amt;
+  if(n.spike){S.ill.spikeChance=.10;log(`THE ILLITHID SPIKES! It pushes with ${push} force.`,'ill');}
+  else {S.ill.spikeChance=Math.min(.6,S.ill.spikeChance+.07);}
+  if(S.ill.fedTurns>0) S.ill.fedTurns--;
+  S.ap=maxAP();
+  rollNext();
+  if(free()<push) return breakMenu(push);
+  if(!n.spike) log(`The Illithid presses with ${push} force. You hold (${free()} free).`);
+  render();
+}
+function breakMenu(push){
+  render();
+  const list=thralls();
+  if(S.mind<push) return end(false,`The Illithid hits with ${push} force. Even with every thrall let go, your mind cannot hold it. It wears you now.`);
+  modal(`<h2 class="ill">Your grip is failing</h2><p>The Illithid pushes with <b>${push}</b> force. You have only <b>${free()}</b> free mind. Snap your hold on thralls to reclaim focus. Each snapped thrall wakes screaming (+5 suspicion).</p>`+
+    list.map(k=>`<button style="margin:3px" onclick="snap('${k}',${push})">Snap ${INST[instOf(k)].people[tierOf(k)]} (+${TIER[tierOf(k)].upkeep})</button>`).join('')+
+    `<p><button onclick="end(false,'You let go. The Illithid takes your body for its own. Dangerous servant, cruel master.')">Give in</button></p>`);
+}
+function snap(k,push){
+  closeModal();const p=release(k,true);S.sus+=5;
+  log(`You tear free of ${p} to brace yourself.`,'bad');
+  if(free()<push) return breakMenu(push);
+  log(`You hold against the spike with ${free()} free mind.`,'good');
+  render();checkSus();
+}
+function checkSus(){
+  if(S.sus>=100){end(false,'The High Magister has found you. His wards close around your hiding place and he takes the Illithid for himself.');return true;}
+  return false;
+}
+function end(win,msg){
+  S.over=true;render();
+  modal(`<h2 class="${win?'good':'bad'}">${win?'Vengeance':'Game over'}</h2><p>${msg}</p><p>Turns survived: ${S.turn}</p><button class="primary" onclick="closeModal();newGame()">Play again</button>`);
+}
+
+// ---------- UI ----------
+const $=id=>document.getElementById(id);
+function modal(h){$('mbody').innerHTML=h;$('modal').classList.remove('hidden');}
+function closeModal(){$('modal').classList.add('hidden');}
+function pct(v,max){return Math.max(0,Math.min(100,v/max*100))+'%';}
+function render(){
+  const scale=Math.max(S.mind,60);
+  $('mUsed').style.cssText+=`;left:0;width:${pct(used(),scale)}`;
+  $('mFree').style.cssText+=`;left:${pct(used(),scale)};width:${pct(free(),scale)}`;
+  $('mTxt').textContent=`Mind ${S.mind}/70 · held ${used()} · free ${free()}`;
+  $('iBar').style.width=pct(basePush(),scale);
+  $('iTxt').textContent=`Steady push ${basePush()}${S.ill.fedTurns?` (sated ${S.ill.fedTurns})`:''}`;
+  const c=S.ill.spikeChance;
+  $('iOmen').textContent=c<.2?'It is quiet. Too quiet.':c<.35?'You feel it testing the edges of your will.':c<.5?'Whispers. It is gathering itself.':'It is coiled to strike. A surge is coming.';
+  const u=tiersIn('under'), n=S.ill.next, nb=basePush()+(S.turn%3===2?1:0);
+  $('iIntel').textContent=has('under',2)?`Undercroft intel: next push will be ${nb+n.amt}.`:
+    has('under',1)?`Undercroft intel: next push between ${nb} and ${nb+25}.`:
+    has('under',0)?`Undercroft intel: spike chance next turn ${Math.round(c*100)}%.`:'Hold someone in the Undercroft to learn more.';
+  $('turn').textContent=S.turn;$('ap').textContent=`${S.ap}/${maxAP()}`;$('gold').textContent=S.gold;
+  $('sBar').style.width=pct(S.sus,100);$('sTxt').textContent=`${S.sus}/100`;
+  $('vBar').style.width=pct(S.sub,100);$('vTxt').textContent=`${S.sub}/100${has('coll',2)?'':' · need the Provost to confront'}`;
+  $('confront').disabled=!(has('coll',2)&&S.sub>=100&&S.ap>0);
+  $('grid').innerHTML=INST.map((I,i)=>`<div class="panel inst"><h3>${I.name}</h3><div class="perk">${I.perk}</div>`+
+    I.people.map((p,t)=>{const k=key(i,t),T=TIER[t],h=S.held[k];
+      const can=!S.over&&S.ap>0&&S.gold>=T.gold&&free()>=T.upkeep&&(t===0||S.held[key(i,t-1)]);
+      return `<div class="tgt ${h?'held':''}"><div>${p}<br><small>Tier ${t+1} · mind ${T.upkeep} · ${T.gold}g</small></div>`+
+        (h?`<button onclick="release('${k}');render()">Release</button>`:`<button ${can?'':'disabled'} onclick="dominate(${i},${t})">Dominate</button>`)+`</div>`}).join('')+`</div>`).join('');
+  $('log').innerHTML=S.log.join('');
+}
+// intro
+newGame();
+modal(`<h1>Dangerous Servant / Cruel Master</h1>
+<p>The High Magister Veyl Sarrow burned your family and then broke you in open duel. You crawled away with one idea left: mind magic, which no human may wield unless they have survived a mind attack and turned it back on the creature that made it.</p>
+<p>So you summoned an Illithid. It struck, you barely held, and now it is yours. Through it you can bend minds across the kingdom of Caldreth. But it never stops pushing to break free.</p>
+<p><b>How to play.</b> Each turn you have actions. Dominate people in six institutions, climbing from the lowest rank up; each thrall occupies mind strength. Your <i>free</i> mind must stay above the Illithid's push at the end of each turn, and sometimes it spikes without warning. Thralls build Subversion and grant their institution's perk. Reach 100 Subversion, hold the Collegium's Provost, and confront the Magister. Let suspicion reach 100, or let the Illithid through, and you lose.</p>
+<button class="primary" onclick="closeModal()">Begin</button>`);
+</script>
+</body>
+</html>
