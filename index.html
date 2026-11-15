@@ -223,6 +223,7 @@ button.danger{background:#6a2430;border-color:#c0505a}
       <div>The High Magister's suspicion<div class="bar"><div id="sBar" style="background:var(--sus)"></div><span id="sTxt"></span></div></div>
       <div>Caldreth subverted<div class="bar"><div id="vBar" style="background:var(--ok)"></div><span id="vTxt"></span></div></div>
     </div>
+    <div id="mag" style="font-size:13px;min-height:38px;margin-bottom:6px"></div>
     <svg id="map" viewBox="0 0 640 520"></svg>
   </div>
 
@@ -252,18 +253,97 @@ const TIER = [
 ];
 const MAXMIND=70;
 const INST = [
-  {id:'coin', x:330,y:285, name:'The Gilded Consortium', perk:'Merchant guild. Each thrall here earns +3 gold per rank, every night.',
+  {id:'coin', x:330,y:285, name:'The Gilded Consortium', perk:'Merchant guild. Each thrall earns +3 gold per rank, every night. A rank 2 thrall can bribe officials and can bury the Magister\'s audits.',
    people:['Ledger-clerk Pell','Factor Imra Dole','Guildmaster Osk Varrin']},
-  {id:'watch',x:530,y:275, name:'The Ashen Watch', perk:'City guard. Each thrall here lowers suspicion by 1 per rank, every night.',
+  {id:'watch',x:530,y:275, name:'The Ashen Watch', perk:'City guard. Each thrall lowers suspicion by 1 per rank every night, and makes the Inquisitor 5% per rank less likely to expose anyone. A rank 2 thrall can call off the Inquisitor and can lose the warrants for a purge.',
    people:['Sergeant Hale','Captain Bree Tamsin','Lord-Marshal Cade Orwen']},
-  {id:'temple',x:112,y:280, name:'Temple of the Still Flame', perk:'Clergy. Meditation grants +1 extra mind per rank held here.',
+  {id:'temple',x:112,y:280, name:'Temple of the Still Flame', perk:'Clergy. Their vigil weakens every surge by 2 per rank held here, and meditation grants +1 mind per rank. A rank 2 thrall can blind the Magister\'s scrying.',
    people:['Acolyte Senn','Confessor Mirelle','The Hierarch Aubric']},
-  {id:'court',x:185,y:140, name:'The Lantern Court', perk:'Noble houses. Holding the Lady Chancellor grants +1 action every night.',
+  {id:'court',x:185,y:140, name:'The Lantern Court', perk:'Noble houses. Court gossip covers your tracks: taking a mind raises 1 less suspicion per rank held here. A rank 2 thrall can speak against any order of the Magister. The Lady Chancellor grants +1 action every night.',
    people:['Page Willem','Baron Tesk Ardane','Lady Chancellor Ysolde Crane']},
-  {id:'under',x:210,y:432, name:'The Undercroft', perk:'Thieves and spies who watch the cell for you. Rank 1: surge odds. Rank 2: whether a surge comes tonight. Rank 3: its exact size.',
+  {id:'under',x:210,y:432, name:'The Undercroft', perk:'Thieves and spies. They watch the cell: rank 1 gives surge odds, rank 2 says whether a surge comes, rank 3 gives its size and +15% to every Force. A rank 2 thrall can blackmail anyone in the city and can slip you past a curfew.',
    people:['Cutpurse Nim','Fence Old Marrow','The Mother of Keys']},
-  {id:'coll', x:462,y:140, name:'Collegium of the Ninth Seal', perk:'The High Magister\'s own academy. Its wards weaken the Illithid by 1 per rank. You need its Provost to confront him. Double suspicion.',
+  {id:'coll', x:462,y:140, name:'Collegium of the Ninth Seal', perk:'The High Magister\'s own academy. Its wards weaken the Illithid by 1 per rank. A rank 2 thrall can unpick his mind-wards. You need its Provost to confront him. Double suspicion.',
    people:['Apprentice Lio','Warden-Magus Fenna','Provost Dravik Sol']},
+];
+const SCHEME={
+  coin:['Bribe an official','20 gold: −8 suspicion'],
+  watch:['Call off the Inquisitor','He leaves, or never arrives'],
+  under:['Blackmail…','Make anyone an opening for two nights'],
+  court:['Speak against the Magister','Cancels his pending order']};
+// The High Magister's orders. Each is announced a night ahead and can be stopped by a rank 2+ thrall in one institution.
+const EDICTS={
+  purge:{by:'watch',say:e=>`will purge ${INST[e.i].name}: every thrall there has a 50% chance of exposure`,
+    hit:e=>{let n=0;thralls().filter(k=>instOf(k)===e.i).forEach(k=>{if(R()<.5){release(k,true);S.sus+=8;n++;}});
+      log(`The Magister's purge sweeps ${INST[e.i].name}. `+(n?`${n} of your thralls ${n>1?'are':'is'} dragged out and broken. (+${n*8} suspicion)`:'It finds nothing.'),'bad');}},
+  scry:{by:'temple',say:()=>'will scry the whole city for mind magic (+15 suspicion)',
+    hit:()=>{S.sus+=15;log('Veyl Sarrow\'s scrying passes over the rooftops like a cold hand, and lingers near your street. (+15 suspicion)','bad');}},
+  audit:{by:'coin',say:()=>'will audit the guilds and seize half your gold',
+    hit:()=>{const g=S.gold>>1;S.gold-=g;log(`The Magister's auditors follow the money. You lose ${g} gold.`,'bad');}},
+  curfew:{by:'under',say:()=>'will impose a curfew (1 fewer action tomorrow night)',
+    hit:()=>{S.curfew=true;log('Curfew bells. The streets are empty and your reach is short tonight. (−1 action)','bad');}},
+  informers:{by:'court',say:()=>'will post a bounty for informers (taking minds raises double suspicion for 3 nights)',
+    hit:()=>{S.informers=4;log('A royal bounty for informers is cried in every square. Everyone is watching everyone. (double suspicion from taking minds, 3 nights)','bad');}},
+  wards:{by:'coll',say:()=>'will raise mind-wards over the city (Force odds −20% for 3 nights)',
+    hit:()=>{S.wards=4;log('The Magister raises wards over Caldreth. Unprepared minds are harder to break. (Force −20%, 3 nights)','bad');}}};
+const pick=a=>a[Math.floor(R()*a.length)];
+const gain=n=>{S.mind=Math.min(MAXMIND,S.mind+n);};
+// Night events: [label, effect returning the outcome text, optional condition]
+const EVENTS=[
+  {t:'A thrall wavers',ok:()=>thralls().length>0,pre:()=>{S.ev.k=pick(thralls());},
+   x:()=>`${nameOf(S.ev.k)} has started weeping at odd moments. Something of them is still in there, pushing back.`,
+   o:[['Bear down on them (−3 mind)',()=>{S.mind-=3;return 'You crush the last of their resistance. It costs you.';}],
+      ['Let them go quietly',()=>`You ease out of ${release(S.ev.k,true)}'s mind. They remember nothing.`],
+      ['Trust your hold (50%: they wake screaming)',()=>{if(R()<.5)return 'The moment passes. They are still yours.';S.sus+=8;return `${release(S.ev.k,true)} wakes screaming in the street. (+8 suspicion)`;}]]},
+  {t:'The Festival of Lanterns',x:()=>'The whole city is in the streets tonight, masked and drunk.',
+   o:[['Work under cover of the crowd (your next taking tonight raises no suspicion)',()=>{S.quiet=true;return 'Nobody notices one more glassy stare tonight.';}],
+      ['Rest while the city drinks (+6 mind)',()=>{gain(6);return 'For one night you sleep like a person.';}],
+      ['Have your thralls work the crowd (+15 gold)',()=>{S.gold+=15;return 'Purses are light in the morning.';}]]},
+  {t:'A witness',x:()=>'A lamplighter has noticed the glow that leaks under your floorboards, and has started telling people.',
+   o:[['Pay him to forget (15 gold)',()=>{S.gold-=15;return 'He decides it was a trick of the light.';},()=>S.gold>=15],
+      ['Give him to the Illithid (it gains +1 power, sated 1 night)',()=>{S.ill.base++;S.ill.fedTurns=Math.max(S.ill.fedTurns,1);return 'There is no lamplighter on your street any more. The thing below is content, briefly.';}],
+      ['Ignore him (+8 suspicion)',()=>{S.sus+=8;return 'The story spreads.';}]]},
+  {t:'It speaks',x:()=>'For once the Illithid uses words. It offers you the Magister\'s private ciphers, in exchange for one deep breath of freedom.',
+   o:[['Refuse',()=>'It laughs, wetly, for a long time.'],
+      ['Accept (+15 subversion, Illithid +2 power)',()=>{S.sub=Math.min(100,S.sub+15);S.ill.base+=2;return 'The ciphers are real. So is the price.';}],
+      ['Demand more (50%: +25 subversion; 50%: it lashes out)',()=>{S.ill.base+=2;if(R()<.5){S.sub=Math.min(100,S.sub+25);return 'It gives you everything. It seems pleased to. (+25 subversion, Illithid +2 power)';}S.ill.spikeChance=.6;return 'It takes its breath and gives you nothing. It is coiling to strike. (Illithid +2 power, a surge is likely)';}]]},
+  {t:'Smugglers\' cargo',x:()=>'A barge of untaxed silk is sitting under the east bridge with two guards on it.',
+   o:[['Have your people in the Undercroft lift it (+25 gold)',()=>{S.gold+=25;return 'By morning the barge is empty.';},()=>tiersIn('under')>0],
+      ['Buy a share (10 gold; 50% to return 35)',()=>{S.gold-=10;if(R()<.5){S.gold+=35;return 'The silk sells. (+35 gold)';}return 'The Watch gets there first. Your stake is gone.';},()=>S.gold>=10],
+      ['Leave it',()=>'Not your business.']]},
+  {t:'A rival senses you',x:()=>'Adept Corvane Ysk, one of the Magister\'s students, felt the edge of your working and has come looking.',
+   o:[['Buy his silence (20 gold)',()=>{S.gold-=20;return 'He is ambitious, and cheap.';},()=>S.gold>=20],
+      ['Show him what is in the cell (surge odds +20%)',()=>{S.ill.spikeChance=Math.min(.6,S.ill.spikeChance+.2);return 'He runs, and does not stop at the city gate. The Illithid enjoyed him.';}],
+      ['Do nothing (+10 suspicion)',()=>{S.sus+=10;return 'He goes to his master.';}]]},
+  {t:'The king\'s fever',x:()=>'The king is ill, and the High Magister has not left his bedside in two days.',
+   o:[['Use the distraction (+8 subversion)',()=>{S.sub=Math.min(100,S.sub+8);return 'Papers are signed that nobody reads.';}],
+      ['Breathe (−5 suspicion, the Magister\'s next move is delayed)',()=>{S.sus=Math.max(0,S.sus-5);S.mag.eta+=3;return 'For a few nights nobody is hunting you.';}]]},
+  {t:'A hanging',x:()=>'The Magister has found his "mind-witch": a herb-seller who never harmed anyone. She hangs at dawn.',
+   o:[['Let her hang (−12 suspicion)',()=>{S.sus=Math.max(0,S.sus-12);return 'The city sleeps easier. You do not.';}],
+      ['Free her through a thrall (+6 suspicion, +6 subversion)',()=>{S.sus+=6;S.sub=Math.min(100,S.sub+6);return 'A door is left unlocked. The Magister looks a fool.';},()=>thralls().length>0]]},
+  {t:'An old tract',x:()=>'A treatise on mental discipline has surfaced in a bookstall by the river.',
+   o:[['Buy and study it (15 gold, +8 mind)',()=>{S.gold-=15;gain(8);return 'Half of it is nonsense. The other half works.';},()=>S.gold>=15],
+      ['Have it stolen and sold (+20 gold, +3 suspicion)',()=>{S.gold+=20;S.sus+=3;return 'A collector pays well.';}],
+      ['Leave it',()=>'You walk on.']]},
+  {t:'Its dreams',x:()=>'You fell asleep and dreamed the Illithid\'s dreams: dark water, and a great many minds.',
+   o:[['Endure it (−4 mind)',()=>{S.mind-=4;return 'You wake with blood in your nose.';}],
+      ['Poppy tincture (10 gold)',()=>{S.gold-=10;return 'No dreams at all.';},()=>S.gold>=10],
+      ['Let it in a little (Illithid +1 power)',()=>{S.ill.base++;return 'It was only a dream. It was not only a dream.';}]]},
+  {t:'Questions at home',ok:()=>thralls().some(k=>tierOf(k)>0),pre:()=>{S.ev.k=pick(thralls().filter(k=>tierOf(k)>0));},
+   x:()=>`The family of ${nameOf(S.ev.k)} say they are not themselves lately, and have asked a priest to visit.`,
+   o:[['Send gifts and excuses (15 gold)',()=>{S.gold-=15;return 'The priest finds a tired, generous relative.';},()=>S.gold>=15],
+      ['Play the part yourself (−1 action tonight)',()=>{S.ap=Math.max(0,S.ap-1);return 'You spend half the night being somebody\'s loving father.';}],
+      ['Ignore it (+7 suspicion)',()=>{S.sus+=7;return 'The priest writes a letter.';}]]},
+  {t:'Dinner at court',ok:()=>tiersIn('court')>0,x:()=>'Your thrall at court is seated three places from the High Magister. He is drinking, and for once unguarded.',
+   o:[['Only listen (+6 subversion)',()=>{S.sub=Math.min(100,S.sub+6);return 'He talks too much about the king\'s debts.';}],
+      ['Slip a doubt into his mind (60%: −15 suspicion; 40%: +15)',()=>{if(R()<.6){S.sus=Math.max(0,S.sus-15);return 'He goes to bed certain he has been chasing shadows. (−15 suspicion)';}S.sus+=15;return 'He sets down his cup and looks slowly around the table. (+15 suspicion)';}]]},
+  {t:'Alms day',ok:()=>tiersIn('temple')>0,x:()=>'Pilgrims fill the Temple of the Still Flame, and your clergy stand at the door.',
+   o:[['Skim the plate (+12 gold)',()=>{S.gold+=12;return 'The Flame provides.';}],
+      ['Sit in the quiet with them (+5 mind)',()=>{gain(5);return 'For an hour the thing below cannot find you.';}]]},
+  {t:'A knock at the door',ok:()=>tiersIn('watch')===0,x:()=>'The Watch is going door to door along your street.',
+   o:[['Bribe the sergeant (10 gold)',()=>{S.gold-=10;return 'He does not come upstairs.';},()=>S.gold>=10],
+      ['Hide the trapdoor and wait (−1 action tonight)',()=>{S.ap=Math.max(0,S.ap-1);return 'They leave after an hour.';}],
+      ['Bluff (50%: +10 suspicion)',()=>{if(R()<.5)return 'A poor scholar, nothing more. They move on.';S.sus+=10;return 'He writes something down. (+10 suspicion)';}]]},
 ];
 const SPIRE={x:322,y:92}, GARRET={x:440,y:448};
 const OPPS=['is deep in their cups tonight','walks home alone tonight','is sick with fever, their guard down','is grieving, and not sleeping','has been dabbling in a forbidden tract'];
@@ -282,7 +362,8 @@ function newGame(){
   S = {turn:1, ap:2, gold:30, mind:40, sus:0, sub:0,
        ill:{base:12, spikeChance:.10, fedTurns:0, next:null},
        held:{}, chan:false, borrowed:false, cloak:false, pose:'idle', sel:0,
-       inq:{at:-1, next:-1, eta:4}, opp:null, pending:null, over:false, log:[]};
+       inq:{at:-1, next:-1, eta:4}, mag:{eta:6, edict:null, last:''}, cd:{}, ev:null, lastEv:-1,
+       curfew:false, informers:0, wards:0, quiet:false, opp:null, pending:null, over:false, log:[]};
   rollNext();
   log('You hold the Illithid by a thread of will. Above the city, the High Magister Veyl Sarrow sits at the king\'s right hand, unaware.', 'ill');
   render();
@@ -305,7 +386,11 @@ const tonight=()=>pushOf(S.ill.base+growth());
 const margin=()=>free()-tonight();
 const isOpp=k=>S.opp&&S.opp.k===k;
 const goldCost=(i,t)=>isOpp(key(i,t))?Math.ceil(TIER[t].gold/2):TIER[t].gold;
-const forceChance=(i,t)=>Math.min(.95,TIER[t].force+(t>0&&S.held[key(i,t-1)]?.1:0)+(isOpp(key(i,t))?.3:0));
+const forceChance=(i,t)=>Math.max(.05,Math.min(.95,TIER[t].force+(t>0&&S.held[key(i,t-1)]?.1:0)+(isOpp(key(i,t))?.3:0)+(has('under',2)?.15:0)-(S.wards>0?.2:0)));
+const susGain=(i,t)=>S.quiet?0:Math.max(1,TIER[t].sus-tiersIn('court'))*(INST[i].id==='coll'?2:1)*(S.informers>0?2:1);
+const surge=()=>S.ill.next.spike?Math.max(0,S.ill.next.amt-2*tiersIn('temple')):0;
+const exposeChance=()=>Math.max(.05,.35-.05*tiersIn('watch'));
+const agent=id=>has(id,2)||has(id,1);
 
 function rollNext(){
   const spike = R()<S.ill.spikeChance;
@@ -340,7 +425,7 @@ function take(i,t,forced){
     const sus=(T.sus+6)*mult;S.sus+=sus;S.ill.base++;S.pose='brace';
     log(`You hurl yourself at ${p}'s mind unprepared and it slams shut. They felt you. The Illithid savours your failure. (+${sus} suspicion, Illithid +1 power)`,'bad');
   } else {
-    S.held[k]=true;const sus=T.sus*mult,b=(t+1)*2;S.sus+=sus;S.sub=Math.min(100,S.sub+b);
+    const sus=susGain(i,t),b=(t+1)*2;S.quiet=false;S.held[k]=true;S.sus+=sus;S.sub=Math.min(100,S.sub+b);
     if(opp)S.opp=null;
     log(`${forced?'You break into':'Through the Illithid you slip into'} ${p}'s mind. They are yours. (−${T.upkeep} free mind, +${sus} suspicion, +${b} subversion)`,'good');
   }
@@ -387,6 +472,52 @@ function seize(){
   }
   render();checkSus();
 }
+function scheme(id){
+  if(S.over||S.ap<1||(S.cd[id]||0)>0||!agent(id)) return;
+  if(id==='under') return blackmailMenu();
+  if(id==='coin'){if(S.gold<20||S.sus<=0)return;S.gold-=20;S.sus=Math.max(0,S.sus-8);log('Consortium gold changes hands in a back office. A report is misfiled. (−8 suspicion)','gold');}
+  if(id==='watch'){if(S.inq.at<0&&S.inq.next<0)return;S.inq={at:-1,next:-1,eta:6};S.cd.watch=5;log('Your officer in the Watch sends Inquisitor Roake across the river after a rumour you invented.','good');}
+  if(id==='court'){if(!S.mag.edict)return;S.mag.edict=null;S.mag.eta=5;S.cd.court=6;log('Your noble rises in the Lantern Court and calls the Magister\'s order an insult to the king. It is withdrawn.','good');}
+  S.ap--;S.pose='idle';render();
+}
+function blackmailMenu(){
+  let h='<h2>Blackmail</h2><p>Your people in the Undercroft know something about everyone. Choose who they lean on. For two nights that person can be taken at half cost, whatever their rank, and is far easier to Force.</p>';
+  INST.forEach((I,i)=>{const l=I.people.map((p,t)=>S.held[key(i,t)]?'':`<button style="margin:2px" onclick="blackmail('${key(i,t)}')">${p}</button>`).join('');if(l)h+=`<div class="perk" style="margin:6px 0 0">${I.name}</div>`+l;});
+  modal(h+'<p><button onclick="closeModal()">Cancel</button></p>');
+}
+function blackmail(k){
+  closeModal();S.ap--;S.cd.under=4;S.opp={k,turns:2,why:'has had a quiet word from your people in the Undercroft'};S.sel=instOf(k);
+  log(`An opening: ${nameOf(k)} ${S.opp.why}.`,'gold');render();
+}
+function counter(){
+  const e=S.mag.edict;if(S.over||!e||S.ap<1||!agent(EDICTS[e.id].by)) return;
+  const by=EDICTS[e.id].by,i=INST.findIndex(x=>x.id===by);
+  S.ap--;S.mag.edict=null;S.mag.eta=S.sus>=60?3:S.sus>=30?4:6;
+  log(`${INST[i].people[has(by,2)?2:1]} sees to it that the Magister's order comes to nothing.`,'good');render();
+}
+function moveMagister(){
+  const m=S.mag;if(m.edict||--m.eta>0) return false;
+  const c=['scry','curfew','informers','wards'];
+  if(thralls().length)c.push('purge','purge');
+  if(S.gold>=20)c.push('audit');
+  let id=pick(c);if(id===m.last)id=pick(c);
+  const cnt=INST.map((I,i)=>thralls().filter(k=>instOf(k)===i).length);
+  m.last=id;m.edict={id,i:cnt.indexOf(Math.max(...cnt))};
+  log(`Word from the Spire: at dawn the High Magister ${EDICTS[id].say(m.edict)}.`,'bad');
+  return true;
+}
+function fireEvent(){
+  const c=EVENTS.map((e,n)=>n).filter(n=>n!==S.lastEv&&(!EVENTS[n].ok||EVENTS[n].ok()));
+  const n=pick(c),E=EVENTS[n];S.lastEv=n;S.ev={n};if(E.pre)E.pre();
+  modal(`<h2 class="gold">${E.t}</h2><p>${E.x()}</p>`+E.o.map((o,j)=>`<p><button ${!o[2]||o[2]()?'':'disabled'} onclick="chooseEv(${j})">${o[0]}</button></p>`).join(''));
+}
+function chooseEv(j){
+  const E=EVENTS[S.ev.n],o=E.o[j];if(o[2]&&!o[2]()) return;
+  const out=o[1]();S.ev=null;
+  log(`<i>${E.t}.</i> ${out}`,'gold');
+  modal(`<h2 class="gold">${E.t}</h2><p>${out}</p><button class="primary" onclick="closeModal()">Continue</button>`);
+  render();if(checkSus())return;
+}
 function confront(){
   if(!has('coll',2)||S.sub<100||S.ap<1||S.over) return;
   const push=Math.round(tonight()*2);
@@ -403,7 +534,7 @@ function finalStrike(push){
 
 // ---------- Night ----------
 function endTurn(){
-  if(S.over||S.pending) return;
+  if(S.over||S.pending||S.ev) return;
   // thralls work
   const inc=5+thralls().filter(k=>k.startsWith('coin')).reduce((a,k)=>a+3*(tierOf(k)+1),0);
   S.gold+=inc;
@@ -414,32 +545,40 @@ function endTurn(){
   log(`Your thralls work in the shadows: +${inc} gold${sub?`, +${sub} subversion`:''}.`,'gold');
   // the Inquisitor searches
   if(S.inq.at>=0&&!S.cloak){
+    const ch=exposeChance();
     thralls().filter(k=>instOf(k)===S.inq.at).forEach(k=>{
-      if(R()<.35){S.sus+=10;log(`The Inquisitor looks into ${release(k,true)}'s eyes and sees someone else looking back. You lose them. (+10 suspicion)`,'bad');}});
+      if(R()<ch){S.sus+=10;log(`The Inquisitor looks into ${release(k,true)}'s eyes and sees someone else looking back. You lose them. (+10 suspicion)`,'bad');}});
   }
+  // the Magister's order lands
+  if(S.mag.edict){const e=S.mag.edict;S.mag.edict=null;S.mag.eta=S.sus>=60?3:S.sus>=30?4:6;EDICTS[e.id].hit(e);}
   if(checkSus()) return;
   // the Illithid
   const idle=!S.chan;
   S.ill.base+=growth();
   S.turn++;
   if(idle) log('You left the Illithid idle. Unused, it rests and gathers itself. (Illithid +1 power)','ill');
-  const n=S.ill.next, push=pushOf(S.ill.base)+n.amt;
-  if(n.spike){S.ill.spikeChance=.10;log(`THE ILLITHID SURGES! It throws ${push} force against your will.`,'ill');}
+  const n=S.ill.next, sg=surge(), push=pushOf(S.ill.base)+sg;
+  if(n.spike){S.ill.spikeChance=.10;log(`THE ILLITHID SURGES! It throws ${push} force against your will.`+(sg<n.amt?` Your clergy's vigil blunts it by ${n.amt-sg}.`:''),'ill');}
   else S.ill.spikeChance=Math.min(.6,S.ill.spikeChance+.07);
   if(S.ill.fedTurns>0) S.ill.fedTurns--;
-  S.ap=maxAP();S.chan=false;S.borrowed=false;S.cloak=false;S.pose=n.spike?'brace':'idle';
+  S.ap=Math.max(0,maxAP()-(S.curfew?1:0));S.curfew=false;S.chan=false;S.borrowed=false;S.cloak=false;S.quiet=false;S.pose=n.spike?'brace':'idle';
+  for(const k in S.cd) if(S.cd[k]>0) S.cd[k]--;
+  if(S.informers>0) S.informers--;
+  if(S.wards>0) S.wards--;
   rollNext();
   moveInquisitor();
+  const announced=moveMagister();
   // openings
   if(S.opp&&--S.opp.turns<=0) S.opp=null;
   if(!S.opp&&R()<.3){
     const c=[];INST.forEach((I,i)=>I.people.forEach((p,t)=>{if(!S.held[key(i,t)]&&S.inq.at!==i)c.push(key(i,t));}));
-    if(c.length){const k=c[Math.floor(R()*c.length)];S.opp={k,turns:2,why:OPPS[Math.floor(R()*OPPS.length)]};
+    if(c.length){const k=pick(c);S.opp={k,turns:2,why:pick(OPPS)};
       log(`An opening: ${nameOf(k)} ${S.opp.why}. For two nights they can be taken at half cost, whatever their rank.`,'gold');}
   }
   if(free()<push) return breakMenu(push);
   if(!n.spike) log(`The Illithid presses with ${push} force. You hold.`);
   render();
+  if(!announced&&S.turn>2&&R()<.4) fireEvent();
 }
 function moveInquisitor(){
   const q=S.inq;
@@ -560,9 +699,12 @@ function detail(){
   }
   const i=S.sel,I=INST[i],here=S.inq.at===i;
   let h=`<h3>${I.name}</h3><div class="perk">${I.perk}</div>`;
-  if(here) h+=`<div class="perk bad">Inquisitor Roake is here. Each thrall has a 35% chance of exposure at nightfall, and you cannot take anyone new.<br>
+  if(here) h+=`<div class="perk bad">Inquisitor Roake is here. Each thrall has a ${Math.round(exposeChance()*100)}% chance of exposure at nightfall, and you cannot take anyone new.<br>
     <button ${S.ap>0&&!S.cloak?'':'disabled'} onclick="cloak()" style="margin-top:4px">${S.cloak?'Cloaked tonight':'Cloak thralls (1 action)'}</button>
     <button class="risk" ${S.ap>0?'':'disabled'} onclick="seize()" style="margin-top:4px">Seize his mind (50%)</button></div>`;
+  const sc=SCHEME[I.id];
+  if(sc){const cd=S.cd[I.id]||0,ok=agent(I.id)&&!cd&&S.ap>0&&!S.over&&(I.id!=='coin'||(S.gold>=20&&S.sus>0))&&(I.id!=='watch'||S.inq.at>=0||S.inq.next>=0)&&(I.id!=='court'||S.mag.edict);
+    h+=`<div class="tgt"><div><b>${sc[0]}</b><small>${sc[1]}${agent(I.id)?(cd?` · ready in ${cd} night${cd>1?'s':''}`:''):' · needs a rank 2 thrall here'}</small></div><div class="btns"><button ${ok?'':'disabled'} onclick="scheme('${I.id}')">1 action</button></div></div>`;}
   I.people.forEach((p,t)=>{const k=key(i,t),T=TIER[t],held=S.held[k],opp=isOpp(k);
     const base=!S.over&&S.ap>0&&free()>=T.upkeep&&!here;
     const canD=base&&S.gold>=goldCost(i,t)&&(t===0||S.held[key(i,t-1)]||opp);
@@ -592,13 +734,20 @@ function render(){
   $('iOmen').textContent=(S.ill.fedTurns?`Sated for ${S.ill.fedTurns} more night${S.ill.fedTurns>1?'s':''}. `:'')+['It is quiet. Too quiet.','You feel it testing the edges of your will.','Whispers. It is gathering itself.','It is coiled to strike. A surge is coming.'][a];
   $('iRest').innerHTML=`Power ${S.ill.base}. `+(S.chan?'You worked it hard tonight; it stays tired.':'<span class="bad">Idle tonight: it will rest and gain +1 power.</span>');
   const n=S.ill.next;
-  $('iIntel').textContent=has('under',2)?(n.spike?`The Mother of Keys: a surge of +${n.amt} comes tonight.`:'The Mother of Keys: no surge tonight.'):
+  $('iIntel').textContent=has('under',2)?(n.spike?`The Mother of Keys: a surge of +${surge()} comes tonight.`:'The Mother of Keys: no surge tonight.'):
     has('under',1)?(n.spike?'Old Marrow: it will surge tonight.':'Old Marrow: no surge tonight.'):
     has('under',0)?`Nim's guess: ${Math.round(c*100)}% chance of a surge tonight (they add 8 to 22).`:'Surges add 8 to 22 without warning. Spies in the Undercroft could warn you.';
   // garret
   $('sanct').setAttribute('class','p-'+S.pose);
   $('trap').style.opacity=Math.min(1,.15+press*.7);
   $('pcap').textContent=POSE[S.pose];
+  // the Magister
+  const e=S.mag.edict;let mh;
+  if(e){const q=EDICTS[e.id],by=INST.find(x=>x.id===q.by);
+    mh=`<b class="bad">At dawn the High Magister ${q.say(e)}.</b> <button ${agent(q.by)&&S.ap>0&&!S.over?'':'disabled'} onclick="counter()">Stop it (1 action)</button><br><span class="dim">Needs a rank 2 thrall in ${by.name}, or a voice in the Lantern Court.</span>`;}
+  else mh=`<span class="dim">High Magister Veyl Sarrow ${S.sus<30?'suspects nothing yet.':S.sus<60?'has begun asking questions. His orders will come more often.':'knows someone is working against him. He will not rest.'}</span>`;
+  const fl=[S.informers>0&&`informers' bounty (${S.informers})`,S.wards>0&&`mind-wards (${S.wards})`,S.quiet&&'festival crowds'].filter(Boolean);
+  $('mag').innerHTML=mh+(fl.length?` <span class="gold">In force: ${fl.join(', ')}.</span>`:'');
   // side
   $('detail').innerHTML=detail();
   const g=Math.min(3+tiersIn('temple'),MAXMIND-S.mind);
@@ -613,7 +762,7 @@ modal(`<h1>Dangerous Servant / Cruel Master</h1>
 <p>The High Magister Veyl Sarrow burned your family and then broke you in open duel. You crawled away with one idea left: mind magic, which no human may wield unless they have survived a mind attack and turned it back on the creature that made it.</p>
 <p>So you summoned an Illithid. It struck, you barely held, and now it sits in a cell beneath your garret. Through it you can bend minds across the city of Caldreth. It never stops pushing to break free, and <b>every night it grows stronger</b>.</p>
 <p><b>How to play.</b> Click a place on the map to see who can be taken there. <i>Dominate</i> is certain but needs gold and the rank below; <i>Force</i> needs neither, and can fail badly. Each thrall holds part of your mind. The bar at the top shows what is left against tonight's push, and a surge can add 8 to 22 without warning.</p>
-<p><b>You cannot wait it out.</b> A night in which you do not work the Illithid lets it rest and gain power. The Magister's Inquisitor walks the city looking for your thralls. Subvert Caldreth to 100, take the Collegium's Provost, then climb the Spire before the thing in the cell outgrows you.</p>
+<p><b>You cannot wait it out.</b> A night in which you do not work the Illithid lets it rest and gain power. The Magister's Inquisitor walks the city looking for your thralls, and the Magister himself issues orders against you that only the right thrall in the right place can stop. Every institution protects you in a different way, so read what each one offers. Subvert Caldreth to 100, take the Collegium's Provost, then climb the Spire before the thing in the cell outgrows you.</p>
 <button class="primary" onclick="closeModal()">Begin</button>`);
 </script>
 </body>
