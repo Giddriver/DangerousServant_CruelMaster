@@ -69,11 +69,11 @@ button.danger{background:#6a2430;border-color:#c0505a}
 .crack{stroke:#e6a0ff;stroke-width:1.5;fill:none;opacity:0;transition:opacity .5s}
 .c1 .k1,.c2 .k1,.c2 .k2,.c3 .crack{opacity:.9}
 .pose{display:none}
-.p-idle #stand,.p-dominate #stand,.p-brace #stand,.p-borrow #stand,.p-feed #stand,.p-meditate #sit,.p-lielow #crouch{display:block}
+.p-worn #stand,.p-idle #stand,.p-dominate #stand,.p-brace #stand,.p-borrow #stand,.p-feed #stand,.p-meditate #sit,.p-lielow #crouch{display:block}
 .arm{display:none}
-.p-idle .a-idle,.p-feed .a-head,.p-brace .a-head,.p-dominate .a-reach,.p-borrow .a-idle{display:block}
+.p-idle .a-idle,.p-feed .a-head,.p-brace .a-head,.p-dominate .a-reach,.p-borrow .a-idle,.p-worn .a-idle{display:block}
 #thread,#rings,#shut,#veins{display:none}
-.p-dominate #thread,.p-meditate #rings,.p-lielow #shut,.p-borrow #veins,.p-brace #veins{display:block}
+.p-dominate #thread,.p-meditate #rings,.p-lielow #shut,.p-borrow #veins,.p-brace #veins,.p-worn #veins{display:block}
 .p-lielow #flame,.p-lielow #glowc{display:none}
 #thread path{stroke-dasharray:6 5;animation:dash 1s linear infinite}
 @keyframes dash{to{stroke-dashoffset:-22}}
@@ -82,7 +82,12 @@ button.danger{background:#6a2430;border-color:#c0505a}
 #rings ellipse{fill:none;stroke:var(--mind);animation:rise 2.4s linear infinite}
 #rings ellipse:nth-child(2){animation-delay:-.8s}#rings ellipse:nth-child(3){animation-delay:-1.6s}
 @keyframes rise{from{transform:translateY(0);opacity:.9}to{transform:translateY(-70px);opacity:0}}
-.wglow{fill:#8fd0ff;opacity:0}.p-dominate .wglow,.p-meditate .wglow{opacity:1}.p-borrow .wglow,.p-brace .wglow{opacity:1;fill:#e080ff}
+.wglow{fill:#8fd0ff;opacity:0}.p-dominate .wglow,.p-meditate .wglow{opacity:1}.p-borrow .wglow,.p-brace .wglow,.p-worn .wglow{opacity:1;fill:#e080ff}
+.empty #illg,.empty #aura{display:none}
+.hl{box-shadow:0 0 0 2px var(--gold),0 0 16px var(--gold);border-radius:8px}
+#guide{border-color:var(--gold)}
+#iSay{display:block;font-style:italic;color:#e3a8f5;margin-bottom:3px}
+#hud .mini{font-size:12px;padding:3px 8px}
 /* map */
 .dist{cursor:pointer}
 .dist:hover .halo{opacity:.35}
@@ -111,11 +116,12 @@ button.danger{background:#6a2430;border-color:#c0505a}
         <div id="mUsed" style="background:#5a5564;left:0"></div><div id="mIll" style="background:var(--ill)"></div><div id="mFree" style="background:var(--mind)"></div></div>
       <div id="mTxt" style="font-size:12px;margin-top:3px;color:var(--dim)"></div>
     </div>
+    <button class="mini" onclick="help()" title="How everything works">?</button><button class="mini" onclick="askNew()">New game</button>
     <button id="endbtn" class="primary" onclick="endTurn()">End night ▸</button>
   </div>
 
   <div id="left">
-    <div class="panel scene">
+    <div class="panel scene" id="cellp">
       <h3 class="ill">The cell below</h3>
       <svg id="cell" viewBox="0 0 320 230">
         <defs>
@@ -155,7 +161,7 @@ button.danger{background:#6a2430;border-color:#c0505a}
         <g stroke="#2d2836" stroke-width="1.5"><path d="M18 0V230M74 0V230M130 0V230M186 0V230M242 0V230M298 0V230"/></g>
         <path d="M0 8H320" stroke="#0a080d" stroke-width="9"/><path d="M0 5H320" stroke="#2d2836" stroke-width="1.5"/>
       </svg>
-      <div class="cap"><span id="iOmen" class="ill"></span><small id="iRest"></small><small id="iIntel"></small></div>
+      <div class="cap"><span id="iSay"></span><span id="iOmen" class="ill"></span><small id="iRest"></small><small id="iIntel"></small></div>
     </div>
     <div class="panel scene">
       <h3 style="color:var(--mind)">Your garret</h3>
@@ -228,8 +234,18 @@ button.danger{background:#6a2430;border-color:#c0505a}
   </div>
 
   <div id="side">
+    <div class="panel hidden" id="guide"></div>
     <div class="panel" id="detail"></div>
-    <div class="panel">
+    <div class="panel hidden" id="ownF">
+      <h3 class="ill">What is left of you</h3>
+      <div class="perk">The Illithid wears your body. You get one act each night, and then the night passes.</div>
+      <div class="acts">
+        <button onclick="flipAct('gather')">Gather yourself<small>+5 ember</small></button>
+        <button id="fReach" onclick="flipAct('reach')">Cry out through a thrall<small>+10 ember, the link burns out</small></button>
+        <button id="fBreak" class="risk" style="grid-column:1/3" onclick="flipAct('break')">Break free<small id="fBreakS"></small></button>
+      </div>
+    </div>
+    <div class="panel" id="ownN">
       <h3>Your own actions</h3>
       <div class="acts">
         <button id="bMed" onclick="act('meditate')">Meditate<small id="medS"></small></button>
@@ -303,10 +319,6 @@ const EVENTS=[
    o:[['Pay him to forget (15 gold)',()=>{S.gold-=15;return 'He decides it was a trick of the light.';},()=>S.gold>=15],
       ['Give him to the Illithid (it gains +1 power, sated 1 night)',()=>{S.ill.base++;S.ill.fedTurns=Math.max(S.ill.fedTurns,1);return 'There is no lamplighter on your street any more. The thing below is content, briefly.';}],
       ['Ignore him (+8 suspicion)',()=>{S.sus+=8;return 'The story spreads.';}]]},
-  {t:'It speaks',x:()=>'For once the Illithid uses words. It offers you the Magister\'s private ciphers, in exchange for one deep breath of freedom.',
-   o:[['Refuse',()=>'It laughs, wetly, for a long time.'],
-      ['Accept (+15 subversion, Illithid +2 power)',()=>{S.sub=Math.min(100,S.sub+15);S.ill.base+=2;return 'The ciphers are real. So is the price.';}],
-      ['Demand more (50%: +25 subversion; 50%: it lashes out)',()=>{S.ill.base+=2;if(R()<.5){S.sub=Math.min(100,S.sub+25);return 'It gives you everything. It seems pleased to. (+25 subversion, Illithid +2 power)';}S.ill.spikeChance=.6;return 'It takes its breath and gives you nothing. It is coiling to strike. (Illithid +2 power, a surge is likely)';}]]},
   {t:'Smugglers\' cargo',x:()=>'A barge of untaxed silk is sitting under the east bridge with two guards on it.',
    o:[['Have your people in the Undercroft lift it (+25 gold)',()=>{S.gold+=25;return 'By morning the barge is empty.';},()=>tiersIn('under')>0],
       ['Buy a share (10 gold; 50% to return 35)',()=>{S.gold-=10;if(R()<.5){S.gold+=35;return 'The silk sells. (+35 gold)';}return 'The Watch gets there first. Your stake is gone.';},()=>S.gold>=10],
@@ -347,6 +359,39 @@ const EVENTS=[
 ];
 const SPIRE={x:322,y:92}, GARRET={x:440,y:448};
 const OPPS=['is deep in their cups tonight','walks home alone tonight','is sick with fever, their guard down','is grieving, and not sleeping','has been dabbling in a forbidden tract'];
+// The Illithid's voice
+const SAY={
+  calm:['I am so tired tonight. Sleep, little master.','Nothing from me tonight. You have my word.','Rest. I am only watching.','Not tonight. I am saving myself.'],
+  threat:['Tonight I come for you. Brace.','Hold tight to your little mind tonight.','I have been gathering myself. You will feel it before dawn.','Tonight, I think. Yes.'],
+  any:['How many of you are in there now? I lose count.','You hate him so much. It tastes of iron.','Your walls are thinner on the left.','I was old when your city was a ford.','Ask me for something. Anything.','You hold the leash. Remember who taught you the knot.','I do not sleep. I only wait more quietly.'],
+  many:['So many puppets. Which of us is the hand?','You are spread so thin I can see through you.','Every one of them is a door, and doors open both ways.'],
+  sus:['He is looking for you. I could hide you. Only ask.','The Magister smells us. Mostly you.','Let me deal with the hunters. I would be gentle.'],
+  late:['So close to him now. Will you let me watch?','When he is dead, what will you be for?','Finish it. I am curious what you become.'],
+  sated:['Mmm.','That one had children. Delicious.','I could be content, you know. If you fed me.']};
+const FLIPSAY=['It walks your body through the market, smiling at people. They smile back.','It sits in your chair and reads your notes, amused.','It stands at your window for hours, tasting the city.','It practises your handwriting. It is already better at it than you.'];
+// Bargains: it names a price, and sometimes it lies about what you get. [offer, price, effect, lie chance, lie]
+const BARGAINS=[
+  {x:'I know the Magister\'s private ciphers. Every seal, every hidden clause. Let me breathe, once, and they are yours.',get:'+15 subversion',cost:2,lie:.3,
+   yes:()=>{S.sub=Math.min(100,S.sub+15);return 'The ciphers are real. So is the price.';},no:()=>{S.sub=Math.min(100,S.sub+4);return 'The ciphers are a year out of date. It knew. (+4 subversion only)';}},
+  {x:'He is looking for you. I can reach up into that tower and make him forget your street.',get:'−20 suspicion',cost:2,lie:.3,
+   yes:()=>{S.sus=Math.max(0,S.sus-20);return 'For a moment, in the Spire, an old man loses his train of thought.';},no:()=>{S.sus=Math.max(0,S.sus-5);return 'It barely brushes him. It took its payment in full. (−5 suspicion only)';}},
+  {x:'The hunter with the lantern. Give him to me. Nobody will find enough of him to bury.',get:'the Inquisitor is gone for a long while, +5 suspicion',cost:2,lie:0,ok:()=>S.inq.at>=0||S.inq.next>=0,
+   yes:()=>{S.inq={at:-1,next:-1,eta:10};S.sus+=5;return 'Inquisitor Roake does not report in the morning. Or ever.';}},
+  {x:'A truce. Three nights. I will lie still and you may sleep.',get:'it pushes 8 weaker for 3 nights',cost:1,lie:.35,
+   yes:()=>{S.ill.fedTurns=3;return 'It folds itself into the corner of the cell and is still.';},no:()=>{S.ill.spikeChance=.6;return 'It smiles. There was never going to be a truce. It is coiling to strike.';}},
+  {x:'A miser died under the tannery with his floor full of coin. I ate the memory of where. Would you like it?',get:'+40 gold',cost:1,lie:.3,
+   yes:()=>{S.gold+=40;return 'The floorboards come up easily.';},no:()=>{S.gold+=10;return 'Someone found most of it years ago. It knew that too. (+10 gold only)';}},
+  {x:'You are tired. Take some of me. I have so much.',get:'+10 mind',cost:2,lie:0,
+   yes:()=>{gain(10);return 'It is like drinking from a cold well. You do not look at what else is in the water.';}}];
+const REFUSE=['It laughs, wetly, for a long time.','"Another night, then."','It says nothing. It is very patient.','"You will ask me yourself, in the end."'];
+// The guided first nights: [text, element to highlight, condition that completes the step]
+const TUT=[
+  ['<b>Take your first mind.</b> Click the Gilded Consortium in the middle of the map, then press Dominate next to Ledger-clerk Pell in the panel above this one.','map',()=>thralls().length>0],
+  ['<b>Read the bar at the top.</b> Grey is mind spent holding thralls. Purple is how hard the Illithid will push tonight. What is left is your spare will, and a surge can take 8 to 22 of it without warning. Spend your other action (Meditate is a safe choice).','willwrap',()=>S.ap<1||S.turn>1],
+  ['<b>End the night.</b> Your thralls earn gold and subversion, then the Illithid pushes.','endbtn',()=>S.turn>1],
+  ['<b>Watch the cell.</b> It grows stronger over time, and faster on any night you do not use it, so keep taking minds. It also talks. When it promises a quiet night or threatens a surge, it is lying about one time in three. <i>Force</i> takes anyone without gold, at a risk. Play a night.','cellp',()=>S.turn>2],
+  ['<b>Read each place.</b> Every institution protects you differently, and a rank 2 thrall unlocks its scheme. The High Magister\'s orders appear above the map a night before they land, with who can stop them. Play a night.','detail',()=>S.turn>3],
+  ['<b>The goal.</b> Reach 100 subversion, take the Collegium\'s Provost, then click the Spire to confront the Magister. The <b>?</b> button at the top explains everything again, and the game saves itself. Good luck.','mag',()=>S.turn>4]];
 const POSE={
   idle:'You stand over your map of the city, deciding.',
   meditate:'You sit in stillness, rebuilding the walls of your mind.',
@@ -354,17 +399,18 @@ const POSE={
   lielow:'Candle out, shutters closed. You are nobody tonight.',
   feed:'You look away while it feeds. You can still hear it.',
   borrow:'Its strength runs through you like cold water. It felt you take it.',
-  brace:'You clutch your skull as the thing below throws itself at your will.'};
+  brace:'You clutch your skull as the thing below throws itself at your will.',
+  worn:'It wears you. You watch from somewhere behind your own eyes.'};
 
 // ---------- State ----------
 let S;
-function newGame(){
+function newGame(guide){
   S = {turn:1, ap:2, gold:30, mind:40, sus:0, sub:0,
        ill:{base:12, spikeChance:.10, fedTurns:0, next:null},
        held:{}, chan:false, borrowed:false, cloak:false, pose:'idle', sel:0,
        inq:{at:-1, next:-1, eta:4}, mag:{eta:6, edict:null, last:''}, cd:{}, ev:null, lastEv:-1,
-       curfew:false, informers:0, wards:0, quiet:false, opp:null, pending:null, over:false, log:[]};
-  rollNext();
+       curfew:false, informers:0, wards:0, quiet:false, bar:null, lastBar:0, pacts:0, flip:null, fallen:false, tut:guide?0:-1, opp:null, pending:null, over:false, log:[]};
+  rollNext();whisper();
   log('You hold the Illithid by a thread of will. Above the city, the High Magister Veyl Sarrow sits at the king\'s right hand, unaware.', 'ill');
   render();
 }
@@ -392,6 +438,11 @@ const surge=()=>S.ill.next.spike?Math.max(0,S.ill.next.amt-2*tiersIn('temple')):
 const exposeChance=()=>Math.max(.05,.35-.05*tiersIn('watch'));
 const agent=id=>has(id,2)||has(id,1);
 
+function whisper(){
+  const n=S.ill.next;S.ill.claim=null;
+  if(S.turn>1&&R()<.55){const honest=R()<.65,says=honest?n.spike:!n.spike;S.ill.claim={says,honest};S.ill.say=pick(says?SAY.threat:SAY.calm);}
+  else S.ill.say=pick(S.ill.fedTurns?SAY.sated:S.sus>=60?SAY.sus:S.sub>=70?SAY.late:thralls().length>=5?SAY.many:SAY.any);
+}
 function rollNext(){
   const spike = R()<S.ill.spikeChance;
   S.ill.next={spike, amt: spike ? 8+Math.floor(R()*15) : 0};
@@ -403,9 +454,9 @@ function act(a){
   if(S.over) return;
   if(a==='feed') return feedMenu();
   if(a==='borrow'){
-    if(S.borrowed) return;
+    if(S.borrowed||S.flip) return;
     S.borrowed=true;S.ap++;S.ill.base++;S.pose='borrow';
-    log('You drink from the Illithid\'s strength. One more action tonight. It is stronger for the exchange, forever. (Illithid +1 power)','ill');
+    log('You drink from the Illithid\'s strength. One more action tonight. It is stronger for the exchange, forever. <i>"Take. Take more."</i> (Illithid +1 power)','ill');
     return render();
   }
   if(S.ap<1) return;
@@ -423,7 +474,7 @@ function take(i,t,forced){
   S.ap--;S.chan=true;S.pose='dominate';S.sel=i;
   if(forced&&R()>forceChance(i,t)){
     const sus=(T.sus+6)*mult;S.sus+=sus;S.ill.base++;S.pose='brace';
-    log(`You hurl yourself at ${p}'s mind unprepared and it slams shut. They felt you. The Illithid savours your failure. (+${sus} suspicion, Illithid +1 power)`,'bad');
+    log(`You hurl yourself at ${p}'s mind unprepared and it slams shut. They felt you. The Illithid savours your failure. <i>"Clumsy."</i> (+${sus} suspicion, Illithid +1 power)`,'bad');
   } else {
     const sus=susGain(i,t),b=(t+1)*2;S.quiet=false;S.held[k]=true;S.sus+=sus;S.sub=Math.min(100,S.sub+b);
     if(opp)S.opp=null;
@@ -432,6 +483,7 @@ function take(i,t,forced){
   render();checkSus();
 }
 function release(k,quiet){
+  if(S.flip&&!quiet) return;
   S.held[k]=false;
   const p=nameOf(k);
   if(!quiet){S.sus+=2;log(`You release ${p}. They wake confused. (+2 suspicion)`);render();checkSus();}
@@ -508,7 +560,11 @@ function moveMagister(){
 }
 function fireEvent(){
   const c=EVENTS.map((e,n)=>n).filter(n=>n!==S.lastEv&&(!EVENTS[n].ok||EVENTS[n].ok()));
-  const n=pick(c),E=EVENTS[n];S.lastEv=n;S.ev={n};if(E.pre)E.pre();
+  const n=pick(c);S.lastEv=n;S.ev={n};if(EVENTS[n].pre)EVENTS[n].pre();
+  showEvent();
+}
+function showEvent(){
+  const E=EVENTS[S.ev.n];
   modal(`<h2 class="gold">${E.t}</h2><p>${E.x()}</p>`+E.o.map((o,j)=>`<p><button ${!o[2]||o[2]()?'':'disabled'} onclick="chooseEv(${j})">${o[0]}</button></p>`).join(''));
 }
 function chooseEv(j){
@@ -517,6 +573,85 @@ function chooseEv(j){
   log(`<i>${E.t}.</i> ${out}`,'gold');
   modal(`<h2 class="gold">${E.t}</h2><p>${out}</p><button class="primary" onclick="closeModal()">Continue</button>`);
   render();if(checkSus())return;
+}
+function showBargain(){
+  const B=BARGAINS[S.bar.n];
+  modal(`<h2 class="ill">It speaks</h2><p><i>"${B.x}"</i></p><p>It offers: <b>${B.get}</b>.<br>Its price: <b class="ill">+${B.cost} power, forever</b>.<br><span class="dim">It does not always deliver what it promises.</span></p>
+    <button class="risk" onclick="bargain(1)">Accept</button> <button onclick="bargain(0)">Refuse</button>`);
+}
+function bargain(yes){
+  const B=BARGAINS[S.bar.n];S.bar=null;let out;
+  if(!yes) out=pick(REFUSE);
+  else{S.pacts++;S.ill.base+=B.cost;out=(R()<B.lie?B.no():B.yes())+` (Illithid +${B.cost} power)`;}
+  log(`<i>It speaks.</i> ${out}`,'ill');
+  modal(`<h2 class="ill">It speaks</h2><p>${out}</p><button class="primary" onclick="closeModal()">Continue</button>`);
+  render();checkSus();
+}
+// ----- The reversal: the Illithid breaks free and wears you
+const breakChance=()=>Math.max(5,Math.min(85,(S.flip.ember-12)*3-4*S.pacts));
+function fall(msg){
+  closeModal();S.pending=null;
+  if(S.fallen) return end(false,msg+' You have been here before, and this time it has learned every way you got out. It wears you now, for good.');
+  S.flip={ember:Math.min(24,8+2*thralls().length)};S.ap=0;S.pose='worn';S.mag.edict=null;S.inq={at:-1,next:-1,eta:6};S.opp=null;
+  log(msg+' The ward breaks. The cell is empty. <i>"Dangerous servant. Cruel master. Now we change places."</i>','ill');
+  render();
+  modal(`<h2 class="ill">The Reversal</h2><p>${msg}</p><p>It does not kill you. It <b>wears</b> you. It walks out of the cell in your body, with your thralls and your face, and you are the one locked away, a passenger behind your own eyes.</p>
+  <p>What is left of you is an <b>ember</b>. It fades by 3 every night. Each night you may do one thing: gather yourself, cry out through one of your old thralls, or try to <b>break free</b>. The brighter the ember, the better your chance${S.pacts?', though every bargain you struck with it ('+S.pacts+') makes the door heavier':''}.</p>
+  <p>It feeds carelessly, so the Magister's suspicion climbs fast. If he finds it, or your ember goes out, it is over. And if you win your body back, know that it will not let you do it twice.</p>
+  <button class="primary" onclick="closeModal()">Endure</button>`);
+}
+function flipAct(a){
+  const F=S.flip;if(!F||S.over) return;
+  if(a==='reach'){const l=thralls();if(!l.length) return;const k=pick(l);F.ember+=10;log(`You pour what is left of you through ${release(k,true)}. For a moment somebody hears you. Then the link burns out. (+10 ember)`,'good');}
+  if(a==='gather'){F.ember+=5;log('You gather the scraps of yourself in the dark. (+5 ember)');}
+  if(a==='break'){
+    if(R()*100<breakChance()) return rise();
+    F.ember-=8;log('You throw yourself at the inside of your own skull. It notices, and squeezes. (−8 ember)','bad');}
+  // its night
+  S.turn++;F.ember-=3;S.sus+=8;S.sub=Math.max(0,S.sub-3);
+  const l=thralls();
+  if(S.turn%2===0){
+    if(l.length){S.sus+=4;log(`Wearing your face, the Illithid calls on ${release(pick(l),true)}, and feeds. (+4 suspicion)`,'ill');}
+    else{S.sus+=6;log('With no thralls left, it hunts the streets with your hands. (+6 suspicion)','ill');}
+  } else log(pick(FLIPSAY),'ill');
+  if(S.sus>=100) return end(false,'The High Magister follows the trail of emptied minds to your garret. He burns the thing out of your body, and you with it.');
+  if(F.ember<=0) return end(false,'The last of you goes out like a candle. The Illithid keeps the body. Dangerous servant, cruel master.');
+  render();
+}
+function rise(){
+  S.mind=Math.max(25,Math.min(50,S.flip.ember+15));S.flip=null;S.fallen=true;
+  S.ill.base+=2;S.ill.spikeChance=.1;S.ill.fedTurns=2;S.ap=maxAP();S.chan=false;S.borrowed=false;S.pose='brace';S.mag.eta=3;
+  S.turn++;rollNext();whisper();S.ill.say='That will not work a second time.';S.ill.claim=null;
+  log(`You tear your body back and slam the thing into its cell. You are yourself, barely. (Mind ${S.mind}, Illithid +2 power, stunned for 2 nights)`,'good');
+  render();
+  modal(`<h2 class="good">You are yourself again</h2><p>You find the one thread of will it overlooked and pull. The ward snaps shut around it. It is back in the cell, stunned for two nights, stronger than before and very much awake.</p>
+  <p>Your mind is at ${S.mind}. ${margin()<0?'<b class="bad">That is not enough to hold your remaining thralls tonight: release some before the night ends.</b> ':''}If it breaks free again, there is no coming back.</p><button class="primary" onclick="closeModal()">Continue</button>`);
+}
+// ----- Saving, help, guide
+const SAVE='dscm_save_v4',TUTKEY='dscm_guided';
+const store=(k,v)=>{try{if(v===null)localStorage.removeItem(k);else localStorage.setItem(k,v);}catch(e){}};
+const fetchStore=k=>{try{return localStorage.getItem(k);}catch(e){return null;}};
+function save(){store(SAVE,S.over?null:JSON.stringify(S));}
+function resume(){
+  let d=null;try{d=JSON.parse(fetchStore(SAVE));}catch(e){}
+  if(!d||!d.turn) return;
+  S=d;closeModal();render();
+  if(S.pending) breakMenu(S.pending.push);else if(S.ev) showEvent();else if(S.bar) showBargain();
+}
+function start(guide){closeModal();store(TUTKEY,'1');newGame(guide);}
+function askNew(){modal('<h2>Start a new game?</h2><p>Your current game will be replaced.</p><button class="primary" onclick="start(true)">New game with the guide</button> <button onclick="start(false)">New game</button> <button onclick="closeModal()">Cancel</button>');}
+function skipTut(){S.tut=-1;render();}
+function help(){
+  modal(`<h2>How it works</h2>
+  <p><b>Your mind.</b> Every thrall holds part of it. Each night the Illithid pushes against what is left. If the push is more than your free mind, you must snap thralls loose or lose control. Surges add 8 to 22 on top, without warning.</p>
+  <p><b>The Illithid.</b> It gains power every second night (every night from night 20), plus 1 on any night you do not use it to take a mind. It whispers in the cell: when it promises a quiet night or threatens a surge, it lies about one time in three. It also offers bargains: real help for permanent power, and it does not always deliver.</p>
+  <p><b>Taking minds.</b> Dominate is certain and needs gold and the rank below. Force needs neither and can fail. Openings (gold rings on the map) are half price at any rank.</p>
+  <p><b>Places.</b> Consortium: gold, bribes. Watch: lowers suspicion, blunts the Inquisitor, can call him off. Temple: weakens surges, better meditation. Lantern Court: less suspicion per taking, can cancel the Magister's orders. Undercroft: warns of surges (and of lies), blackmail. Collegium: weakens the Illithid, needed to win. Schemes need a rank 2 thrall.</p>
+  <p><b>The Magister.</b> His orders appear above the map one night before they land. A rank 2 thrall in the named institution stops one for an action. His Inquisitor searches a district for two nights; cloak your thralls or risk seizing him.</p>
+  <p><b>Winning.</b> 100 subversion and the Collegium's Provost, then click the Spire. The Illithid hits back with twice its nightly push, so do not leave it too late.</p>
+  <p><b>Losing control.</b> If the Illithid breaks free it wears your body, and you get one slim chance to take it back. Suspicion at 100 ends the game outright.</p>
+  <p class="dim">The game saves itself in this browser after every action.</p>
+  <button class="primary" onclick="closeModal()">Close</button>`);
 }
 function confront(){
   if(!has('coll',2)||S.sub<100||S.ap<1||S.over) return;
@@ -534,7 +669,7 @@ function finalStrike(push){
 
 // ---------- Night ----------
 function endTurn(){
-  if(S.over||S.pending||S.ev) return;
+  if(S.over||S.pending||S.ev||S.bar||S.flip) return;
   // thralls work
   const inc=5+thralls().filter(k=>k.startsWith('coin')).reduce((a,k)=>a+3*(tierOf(k)+1),0);
   S.gold+=inc;
@@ -556,7 +691,7 @@ function endTurn(){
   const idle=!S.chan;
   S.ill.base+=growth();
   S.turn++;
-  if(idle) log('You left the Illithid idle. Unused, it rests and gathers itself. (Illithid +1 power)','ill');
+  if(idle) log('You left the Illithid idle. Unused, it rests and gathers itself. <i>"Thank you for the rest."</i> (Illithid +1 power)','ill');
   const n=S.ill.next, sg=surge(), push=pushOf(S.ill.base)+sg;
   if(n.spike){S.ill.spikeChance=.10;log(`THE ILLITHID SURGES! It throws ${push} force against your will.`+(sg<n.amt?` Your clergy's vigil blunts it by ${n.amt-sg}.`:''),'ill');}
   else S.ill.spikeChance=Math.min(.6,S.ill.spikeChance+.07);
@@ -565,7 +700,7 @@ function endTurn(){
   for(const k in S.cd) if(S.cd[k]>0) S.cd[k]--;
   if(S.informers>0) S.informers--;
   if(S.wards>0) S.wards--;
-  rollNext();
+  rollNext();whisper();
   moveInquisitor();
   const announced=moveMagister();
   // openings
@@ -579,6 +714,7 @@ function endTurn(){
   if(!n.spike) log(`The Illithid presses with ${push} force. You hold.`);
   render();
   if(!announced&&S.turn>2&&R()<.4) fireEvent();
+  else if(S.turn>3&&S.turn-S.lastBar>=4&&R()<.35){const c=BARGAINS.map((b,n)=>n).filter(n=>!BARGAINS[n].ok||BARGAINS[n].ok());S.bar={n:pick(c)};S.lastBar=S.turn;showBargain();}
 }
 function moveInquisitor(){
   const q=S.inq;
@@ -593,10 +729,10 @@ function moveInquisitor(){
 function breakMenu(push){
   S.pending={push};S.pose='brace';render();
   const list=thralls();
-  if(S.mind<push) return end(false,`The Illithid hits with ${push} force. Even with every thrall let go, your mind cannot hold it. It wears you now.`);
+  if(S.mind<push) return fall(`The Illithid hits with ${push} force. Even with every thrall let go, your mind cannot hold it.`);
   modal(`<h2 class="ill">Your grip is failing</h2><p>The Illithid pushes with <b>${push}</b> force. You have only <b>${free()}</b> free mind. Snap your hold on thralls to reclaim focus. Each snapped thrall wakes screaming (+5 suspicion).</p>`+
     list.map(k=>`<button style="margin:3px" onclick="snap('${k}')">Snap ${nameOf(k)} (+${TIER[tierOf(k)].upkeep})</button>`).join('')+
-    `<p><button class="danger" onclick="end(false,'You let go. The Illithid takes your body for its own. Dangerous servant, cruel master.')">Give in</button></p>`);
+    `<p><button class="danger" onclick="fall('You let go.')">Give in</button></p>`);
 }
 function snap(k){
   const push=S.pending.push;
@@ -715,36 +851,42 @@ function detail(){
   return h;
 }
 function render(){
-  const u=used(),p=Math.min(tonight(),Math.max(0,free())),m=margin();
-  $('mUsed').style.width=pct(u,MAXMIND);
-  $('mIll').style.left=pct(u,MAXMIND);$('mIll').style.width=pct(p,MAXMIND);
-  $('mFree').style.left=pct(u+p,MAXMIND);$('mFree').style.width=pct(Math.max(0,m),MAXMIND);
-  $('mFree').style.background=m>=22?'var(--mind)':m>=8?'#d0a040':'var(--sus)';
-  $('mTxt').innerHTML=`Mind ${S.mind}/${MAXMIND}: <span style="color:#b0a8bc">■ thralls hold ${u}</span> · <span class="ill">■ the Illithid pushes ${tonight()} tonight</span> · `+(m<0?`<b class="bad">SHORT BY ${-m}: it breaks through tonight</b>`:`<span style="color:${m>=22?'var(--mind)':m>=8?'#d0a040':'var(--sus)'}">■ spare will ${m}</span>`+(m<22?' (a surge of 8 to 22 could break it)':''));
+  const u=used(),p=Math.min(tonight(),Math.max(0,free())),m=margin(),F=S.flip;
+  $('mUsed').style.width=pct(F?0:u,MAXMIND);
+  $('mIll').style.left=pct(F?F.ember:u,MAXMIND);$('mIll').style.width=pct(F?MAXMIND:p,MAXMIND);
+  $('mFree').style.left=pct(F?0:u+p,MAXMIND);$('mFree').style.width=pct(F?F.ember:Math.max(0,m),MAXMIND);
+  $('mFree').style.background=F?'#ffb347':m>=22?'var(--mind)':m>=8?'#d0a040':'var(--sus)';
+  $('mTxt').innerHTML=F?`<span style="color:#ffb347">■ Your ember: ${F.ember}</span> (fades by 3 each night) · <span class="ill">■ the Illithid has everything else</span> · chance to break free now: <b>${breakChance()}%</b>`:`Mind ${S.mind}/${MAXMIND}: <span style="color:#b0a8bc">■ thralls hold ${u}</span> · <span class="ill">■ the Illithid pushes ${tonight()} tonight</span> · `+(m<0?`<b class="bad">SHORT BY ${-m}: it breaks through tonight</b>`:`<span style="color:${m>=22?'var(--mind)':m>=8?'#d0a040':'var(--sus)'}">■ spare will ${m}</span>`+(m<22?' (a surge of 8 to 22 could break it)':''));
   $('turn').textContent=S.turn;$('gold').textContent=S.gold;
   let pips='';for(let n=0;n<Math.max(maxAP(),S.ap);n++)pips+=`<span class="pip ${n<S.ap?'on':''}"></span>`;$('ap').innerHTML=pips;
-  $('endbtn').className=m<0?'danger':'primary';
+  $('endbtn').className=m<0&&!F?'danger':'primary';$('endbtn').disabled=!!F;
   $('sBar').style.width=pct(S.sus,100);$('sTxt').textContent=`${S.sus}/100`+(S.sus>=50?' · the Inquisitor hunts faster':'');
   $('vBar').style.width=pct(S.sub,100);$('vTxt').textContent=`${S.sub}/100`;
   // cell
   const c=S.ill.spikeChance,a=c<.2?0:c<.35?1:c<.5?2:3,press=tonight()/Math.max(1,free()),cr=press<.6?0:press<.8?1:press<1?2:3;
-  $('cell').setAttribute('class',`a${a} c${cr} ${S.ill.fedTurns?'sated':''}`);
+  $('cell').setAttribute('class',F?'c3 empty':`a${a} c${cr} ${S.ill.fedTurns?'sated':''}`);
   $('aura').setAttribute('r',40+Math.min(1.2,press)*90);
   $('ward1').style.opacity=Math.max(.15,1-press*.8);$('ward2').style.opacity=Math.max(.1,1-press);
   $('iOmen').textContent=(S.ill.fedTurns?`Sated for ${S.ill.fedTurns} more night${S.ill.fedTurns>1?'s':''}. `:'')+['It is quiet. Too quiet.','You feel it testing the edges of your will.','Whispers. It is gathering itself.','It is coiled to strike. A surge is coming.'][a];
-  $('iRest').innerHTML=`Power ${S.ill.base}. `+(S.chan?'You worked it hard tonight; it stays tired.':'<span class="bad">Idle tonight: it will rest and gain +1 power.</span>');
+  const cl=S.ill.claim,spy=has('under',1)||has('under',2);
+  $('iSay').innerHTML=F?'':`"${S.ill.say}"`+(cl&&spy?` <span style="font-style:normal" class="${cl.honest?'dim':'gold'}">(${cl.honest?'Your spies think it means it.':'Your spies say it is lying.'})</span>`:'');
+  if(F){$('iOmen').textContent='The cell is empty. The ward is broken.';}
+  $('iRest').innerHTML=F?'It is upstairs, wearing you.':`Power ${S.ill.base}. `+(S.chan?'You worked it hard tonight; it stays tired.':'<span class="bad">Idle tonight: it will rest and gain +1 power.</span>');
   const n=S.ill.next;
-  $('iIntel').textContent=has('under',2)?(n.spike?`The Mother of Keys: a surge of +${surge()} comes tonight.`:'The Mother of Keys: no surge tonight.'):
+  $('iIntel').textContent=F?'':has('under',2)?(n.spike?`The Mother of Keys: a surge of +${surge()} comes tonight.`:'The Mother of Keys: no surge tonight.'):
     has('under',1)?(n.spike?'Old Marrow: it will surge tonight.':'Old Marrow: no surge tonight.'):
     has('under',0)?`Nim's guess: ${Math.round(c*100)}% chance of a surge tonight (they add 8 to 22).`:'Surges add 8 to 22 without warning. Spies in the Undercroft could warn you.';
   // garret
   $('sanct').setAttribute('class','p-'+S.pose);
   $('trap').style.opacity=Math.min(1,.15+press*.7);
   $('pcap').textContent=POSE[S.pose];
+  $('ownN').classList.toggle('hidden',!!F);$('ownF').classList.toggle('hidden',!F);
+  if(F){$('fReach').disabled=!thralls().length;$('fBreakS').textContent=`${breakChance()}% to take your body back. Failure costs 8 ember.`;}
   // the Magister
   const e=S.mag.edict;let mh;
   if(e){const q=EDICTS[e.id],by=INST.find(x=>x.id===q.by);
     mh=`<b class="bad">At dawn the High Magister ${q.say(e)}.</b> <button ${agent(q.by)&&S.ap>0&&!S.over?'':'disabled'} onclick="counter()">Stop it (1 action)</button><br><span class="dim">Needs a rank 2 thrall in ${by.name}, or a voice in the Lantern Court.</span>`;}
+  else if(F) mh='<span class="bad">The Illithid feeds without care. The Magister\'s hunters are following the bodies.</span>';
   else mh=`<span class="dim">High Magister Veyl Sarrow ${S.sus<30?'suspects nothing yet.':S.sus<60?'has begun asking questions. His orders will come more often.':'knows someone is working against him. He will not rest.'}</span>`;
   const fl=[S.informers>0&&`informers' bounty (${S.informers})`,S.wards>0&&`mind-wards (${S.wards})`,S.quiet&&'festival crowds'].filter(Boolean);
   $('mag').innerHTML=mh+(fl.length?` <span class="gold">In force: ${fl.join(', ')}.</span>`:'');
@@ -755,15 +897,23 @@ function render(){
   $('bMed').disabled=S.ap<1||g<=0;$('bLie').disabled=S.ap<1||S.sus<=0;$('bBor').disabled=S.borrowed;$('bFeed').disabled=S.ap<1||!thralls().length;
   $('log').innerHTML=S.log.join('');
   drawMap();
+  // guide
+  document.querySelectorAll('.hl').forEach(x=>x.classList.remove('hl'));
+  if(S.tut>=0&&!F){while(S.tut<TUT.length&&TUT[S.tut][2]())S.tut++;if(S.tut>=TUT.length)S.tut=-1;}
+  const tg=S.tut>=0&&!F&&!S.over;
+  $('guide').classList.toggle('hidden',!tg);
+  if(tg){$('guide').innerHTML=`<h3 class="gold">Guide · ${S.tut+1} of ${TUT.length}</h3>${TUT[S.tut][0]} <button class="mini" style="font-size:12px;padding:2px 7px;margin-left:4px" onclick="skipTut()">Skip the guide</button>`;$(TUT[S.tut][1]).classList.add('hl');}
+  save();
 }
 buildMap();
-newGame();
+let saved=null;try{saved=JSON.parse(fetchStore(SAVE));}catch(e){}
+const first=!fetchStore(TUTKEY);
+newGame(false);store(SAVE,saved?JSON.stringify(saved):null);
 modal(`<h1>Dangerous Servant / Cruel Master</h1>
 <p>The High Magister Veyl Sarrow burned your family and then broke you in open duel. You crawled away with one idea left: mind magic, which no human may wield unless they have survived a mind attack and turned it back on the creature that made it.</p>
-<p>So you summoned an Illithid. It struck, you barely held, and now it sits in a cell beneath your garret. Through it you can bend minds across the city of Caldreth. It never stops pushing to break free, and <b>every night it grows stronger</b>.</p>
-<p><b>How to play.</b> Click a place on the map to see who can be taken there. <i>Dominate</i> is certain but needs gold and the rank below; <i>Force</i> needs neither, and can fail badly. Each thrall holds part of your mind. The bar at the top shows what is left against tonight's push, and a surge can add 8 to 22 without warning.</p>
-<p><b>You cannot wait it out.</b> A night in which you do not work the Illithid lets it rest and gain power. The Magister's Inquisitor walks the city looking for your thralls, and the Magister himself issues orders against you that only the right thrall in the right place can stop. Every institution protects you in a different way, so read what each one offers. Subvert Caldreth to 100, take the Collegium's Provost, then climb the Spire before the thing in the cell outgrows you.</p>
-<button class="primary" onclick="closeModal()">Begin</button>`);
+<p>So you summoned an Illithid. It struck, you barely held, and now it sits in a cell beneath your garret. Through it you can bend minds across the city of Caldreth. It never stops pushing to break free, <b>every night it grows stronger</b>, and it talks.</p>
+<p>Take the city's institutions mind by mind, turn the kingdom against the Magister, and climb the Spire before the thing in the cell outgrows you. The <b>?</b> button explains the rules at any time, and the game saves itself as you play.</p>
+${saved&&saved.turn?`<button class="primary" onclick="resume()">Continue (night ${saved.turn})</button> `:''}<button class="${saved&&saved.turn?'':first?'primary':''}" onclick="start(true)">New game with the guide</button> <button class="${!saved&&!first?'primary':''}" onclick="start(false)">New game without it</button>`);
 </script>
 </body>
 </html>
